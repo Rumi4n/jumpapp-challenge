@@ -58,12 +58,13 @@ cd assets && npm install && cd ..
 6. Add authorized redirect URI: `http://localhost:4000/auth/google/callback`
 7. Copy the Client ID and Client Secret
 
-### 4. Get OpenAI API Key
+### 4. Get Google Gemini API Key
 
-1. Sign up at [OpenAI Platform](https://platform.openai.com)
-2. Go to API Keys section
-3. Create a new API key
-4. Copy the key (starts with `sk-proj-...` or `sk-...`)
+1. Go to [Google AI Studio](https://aistudio.google.com)
+2. Click "Get API Key" in the left sidebar
+3. Click "Create API Key" 
+4. Select a Google Cloud project (or create a new one)
+5. Copy the API key
 
 ### 5. Configure Environment Variables
 
@@ -76,7 +77,7 @@ cp env.example .env
 # Edit .env and add your credentials:
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
-OPENAI_API_KEY=your_openai_api_key
+GOOGLE_GEMINI_API_KEY=your_google_gemini_api_key
 ```
 
 **Note**: The `.env` file is automatically loaded in development and test environments. In production, set environment variables through your hosting platform.

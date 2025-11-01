@@ -46,8 +46,8 @@ Before running the app, set these environment variables (or create a `.env` file
 export GOOGLE_CLIENT_ID="your_client_id"
 export GOOGLE_CLIENT_SECRET="your_client_secret"
 
-# OpenAI API (get from https://platform.openai.com)
-export OPENAI_API_KEY="your_api_key"
+# Google Gemini API (get from https://aistudio.google.com)
+export GOOGLE_GEMINI_API_KEY="your_api_key"
 ```
 
 ### 📋 Next Steps

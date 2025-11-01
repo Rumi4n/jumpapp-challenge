@@ -5,7 +5,7 @@ defmodule JumpappEmailSorter.AIServiceTest do
 
   @moduletag :integration
 
-  describe "OpenAI Integration" do
+  describe "Google Gemini Integration" do
     test "summarize_email/1 successfully generates a summary" do
       email_content = """
       Subject: Team Meeting Tomorrow
@@ -25,14 +25,14 @@ defmodule JumpappEmailSorter.AIServiceTest do
           assert String.length(summary) > 0
           # Summary should be reasonably short (not just returning the full email)
           assert String.length(summary) < String.length(email_content)
-          IO.puts("\n✅ OpenAI API is working!")
+          IO.puts("\n✅ Google Gemini API is working!")
           IO.puts("Generated summary: #{summary}")
 
         {:error, :no_api_key} ->
-          flunk("OPENAI_API_KEY environment variable is not set")
+          flunk("GOOGLE_GEMINI_API_KEY environment variable is not set")
 
         {:error, error} ->
-          flunk("OpenAI API call failed: #{inspect(error)}")
+          flunk("Google Gemini API call failed: #{inspect(error)}")
       end
     end
 
@@ -66,10 +66,10 @@ defmodule JumpappEmailSorter.AIServiceTest do
           end
 
         {:error, :no_api_key} ->
-          flunk("OPENAI_API_KEY environment variable is not set")
+          flunk("GOOGLE_GEMINI_API_KEY environment variable is not set")
 
         {:error, error} ->
-          flunk("OpenAI API call failed: #{inspect(error)}")
+          flunk("Google Gemini API call failed: #{inspect(error)}")
       end
     end
 
@@ -81,8 +81,8 @@ defmodule JumpappEmailSorter.AIServiceTest do
 
     test "handles API errors gracefully" do
       # Test with invalid API key to ensure graceful degradation
-      original_key = System.get_env("OPENAI_API_KEY")
-      System.put_env("OPENAI_API_KEY", "invalid_key")
+      original_key = System.get_env("GOOGLE_GEMINI_API_KEY")
+      System.put_env("GOOGLE_GEMINI_API_KEY", "invalid_key")
 
       email_content = "Test email"
       
@@ -91,7 +91,7 @@ defmodule JumpappEmailSorter.AIServiceTest do
 
       # Restore original key
       if original_key do
-        System.put_env("OPENAI_API_KEY", original_key)
+        System.put_env("GOOGLE_GEMINI_API_KEY", original_key)
       end
     end
   end

@@ -1,12 +1,12 @@
 defmodule JumpappEmailSorter.AIService do
   @moduledoc """
-  AI service for email categorization and summarization using OpenAI.
+  AI service for email categorization and summarization using Google Gemini.
   """
 
   require Logger
 
-  @openai_api_base "https://api.openai.com/v1"
-  @model "gpt-4o-mini"  # Using GPT-4o-mini for cost efficiency
+  @gemini_api_base "https://generativelanguage.googleapis.com/v1beta"
+  @model "gemini-1.5-flash"  # Using Gemini 1.5 Flash for speed and efficiency
 
   @doc """
   Categorizes an email based on available categories.
@@ -18,7 +18,7 @@ defmodule JumpappEmailSorter.AIService do
     else
       prompt = build_categorization_prompt(email_content, categories)
       
-      case call_openai(prompt) do
+      case call_gemini(prompt) do
         {:ok, response} ->
           parse_category_response(response, categories)
 
@@ -40,7 +40,7 @@ defmodule JumpappEmailSorter.AIService do
     #{truncate_content(email_content, 2000)}
     """
 
-    case call_openai(prompt) do
+    case call_gemini(prompt) do
       {:ok, response} ->
         {:ok, String.trim(response)}
 
@@ -71,7 +71,7 @@ defmodule JumpappEmailSorter.AIService do
     #{truncate_content(html_content, 3000)}
     """
 
-    case call_openai(prompt) do
+    case call_gemini(prompt) do
       {:ok, response} ->
         parse_unsubscribe_response(response)
 
@@ -83,42 +83,42 @@ defmodule JumpappEmailSorter.AIService do
 
   # Private functions
 
-  defp call_openai(prompt) do
-    api_key = System.get_env("OPENAI_API_KEY")
+  defp call_gemini(prompt) do
+    api_key = System.get_env("GOOGLE_GEMINI_API_KEY")
 
     if !api_key do
-      Logger.error("OPENAI_API_KEY not set")
+      Logger.error("GOOGLE_GEMINI_API_KEY not set")
       {:error, :no_api_key}
     else
-      url = "#{@openai_api_base}/chat/completions"
+      url = "#{@gemini_api_base}/models/#{@model}:generateContent?key=#{api_key}"
 
       body = %{
-        model: @model,
-        messages: [
+        contents: [
           %{
-            role: "user",
-            content: prompt
+            parts: [
+              %{
+                text: prompt
+              }
+            ]
           }
         ],
-        max_tokens: 1024,
-        temperature: 0.7
+        generationConfig: %{
+          temperature: 0.7,
+          maxOutputTokens: 1024
+        }
       }
 
-      headers = [
-        {"authorization", "Bearer #{api_key}"}
-      ]
-
-      case Req.post(url, json: body, headers: headers) do
+      case Req.post(url, json: body) do
         {:ok, %{status: 200, body: response}} ->
-          content = get_in(response, ["choices", Access.at(0), "message", "content"])
+          content = get_in(response, ["candidates", Access.at(0), "content", "parts", Access.at(0), "text"])
           {:ok, content}
 
         {:ok, %{status: status, body: body}} ->
-          Logger.error("OpenAI API error: #{status} - #{inspect(body)}")
+          Logger.error("Google Gemini API error: #{status} - #{inspect(body)}")
           {:error, {:api_error, status, body}}
 
         {:error, error} ->
-          Logger.error("OpenAI API request failed: #{inspect(error)}")
+          Logger.error("Google Gemini API request failed: #{inspect(error)}")
           {:error, error}
       end
     end
