@@ -6,7 +6,8 @@ defmodule JumpappEmailSorter.AIService do
   require Logger
 
   @gemini_api_base "https://generativelanguage.googleapis.com/v1beta"
-  @model "gemini-1.5-flash"  # Using Gemini 1.5 Flash for speed and efficiency
+  # Using Gemini 2.5 Flash - stable and fast
+  @model "gemini-2.5-flash"
 
   @doc """
   Categorizes an email based on available categories.
@@ -17,14 +18,15 @@ defmodule JumpappEmailSorter.AIService do
       {:ok, nil}
     else
       prompt = build_categorization_prompt(email_content, categories)
-      
+
       case call_gemini(prompt) do
         {:ok, response} ->
           parse_category_response(response, categories)
 
         {:error, error} ->
           Logger.error("AI categorization failed: #{inspect(error)}")
-          {:ok, nil}  # Graceful degradation
+          # Graceful degradation
+          {:ok, nil}
       end
     end
   end
@@ -46,7 +48,8 @@ defmodule JumpappEmailSorter.AIService do
 
       {:error, error} ->
         Logger.error("AI summarization failed: #{inspect(error)}")
-        {:ok, extract_preview(email_content)}  # Fallback to simple preview
+        # Fallback to simple preview
+        {:ok, extract_preview(email_content)}
     end
   end
 
@@ -110,7 +113,16 @@ defmodule JumpappEmailSorter.AIService do
 
       case Req.post(url, json: body) do
         {:ok, %{status: 200, body: response}} ->
-          content = get_in(response, ["candidates", Access.at(0), "content", "parts", Access.at(0), "text"])
+          content =
+            get_in(response, [
+              "candidates",
+              Access.at(0),
+              "content",
+              "parts",
+              Access.at(0),
+              "text"
+            ])
+
           {:ok, content}
 
         {:ok, %{status: status, body: body}} ->
@@ -194,4 +206,3 @@ defmodule JumpappEmailSorter.AIService do
     |> String.trim()
   end
 end
-

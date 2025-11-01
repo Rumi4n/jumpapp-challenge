@@ -55,4 +55,3 @@ defmodule JumpappEmailSorter.Workers.GmailPollWorker do
     end
   end
 end
-

@@ -130,4 +130,3 @@ defmodule JumpappEmailSorter.Accounts do
     DateTime.compare(expires_at, DateTime.add(DateTime.utc_now(), 300, :second)) == :lt
   end
 end
-

@@ -63,11 +63,14 @@ config :phoenix, :json_library, Jason
 # Configure Ueberauth
 config :ueberauth, Ueberauth,
   providers: [
-    google: {Ueberauth.Strategy.Google, [
-      default_scope: "email profile https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.readonly",
-      access_type: "offline",
-      prompt: "consent"
-    ]}
+    google:
+      {Ueberauth.Strategy.Google,
+       [
+         default_scope:
+           "email profile https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.readonly",
+         access_type: "offline",
+         prompt: "consent"
+       ]}
   ]
 
 # OAuth credentials are configured in runtime.exs
@@ -77,10 +80,11 @@ config :jumpapp_email_sorter, Oban,
   repo: JumpappEmailSorter.Repo,
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
-    {Oban.Plugins.Cron, crontab: [
-      # Poll for new emails every 3 minutes
-      {"*/3 * * * *", JumpappEmailSorter.Workers.GmailPollWorker}
-    ]}
+    {Oban.Plugins.Cron,
+     crontab: [
+       # Poll for new emails every 3 minutes
+       {"*/3 * * * *", JumpappEmailSorter.Workers.GmailPollWorker}
+     ]}
   ],
   queues: [default: 10, email_import: 5, unsubscribe: 3]
 

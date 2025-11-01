@@ -18,9 +18,15 @@ defmodule JumpappEmailSorter.Emails.UnsubscribeAttempt do
   @doc false
   def changeset(unsubscribe_attempt, attrs) do
     unsubscribe_attempt
-    |> cast(attrs, [:status, :unsubscribe_url, :method, :error_message, :attempted_at, :completed_at])
+    |> cast(attrs, [
+      :status,
+      :unsubscribe_url,
+      :method,
+      :error_message,
+      :attempted_at,
+      :completed_at
+    ])
     |> validate_required([:status])
     |> validate_inclusion(:status, ["pending", "processing", "success", "failed"])
   end
 end
-

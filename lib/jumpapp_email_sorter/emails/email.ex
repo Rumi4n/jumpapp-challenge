@@ -28,6 +28,7 @@ defmodule JumpappEmailSorter.Emails.Email do
   def changeset(email, attrs) do
     email
     |> cast(attrs, [
+      :gmail_account_id,
       :gmail_message_id,
       :thread_id,
       :subject,
@@ -47,4 +48,3 @@ defmodule JumpappEmailSorter.Emails.Email do
     |> unique_constraint([:gmail_account_id, :gmail_message_id])
   end
 end
-

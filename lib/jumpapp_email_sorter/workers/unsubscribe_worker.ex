@@ -20,11 +20,12 @@ defmodule JumpappEmailSorter.Workers.UnsubscribeWorker do
       {:error, :no_unsubscribe_link}
     else
       # Create unsubscribe attempt record
-      {:ok, attempt} = Emails.create_unsubscribe_attempt(email_id, %{
-        unsubscribe_url: email.unsubscribe_link,
-        status: "processing",
-        attempted_at: DateTime.utc_now()
-      })
+      {:ok, attempt} =
+        Emails.create_unsubscribe_attempt(email_id, %{
+          unsubscribe_url: email.unsubscribe_link,
+          status: "processing",
+          attempted_at: DateTime.utc_now()
+        })
 
       # Try to unsubscribe
       result = attempt_unsubscribe(email.unsubscribe_link)
@@ -110,4 +111,3 @@ defmodule JumpappEmailSorter.Workers.UnsubscribeWorker do
     end
   end
 end
-

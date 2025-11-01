@@ -20,7 +20,15 @@ defmodule JumpappEmailSorter.Accounts.User do
   @doc false
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:email, :google_id, :name, :picture, :access_token, :refresh_token, :token_expires_at])
+    |> cast(attrs, [
+      :email,
+      :google_id,
+      :name,
+      :picture,
+      :access_token,
+      :refresh_token,
+      :token_expires_at
+    ])
     |> validate_required([:email, :google_id])
     |> unique_constraint(:email)
     |> unique_constraint(:google_id)
@@ -32,4 +40,3 @@ defmodule JumpappEmailSorter.Accounts.User do
     |> validate_required([:access_token])
   end
 end
-

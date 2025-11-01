@@ -20,6 +20,7 @@ if config_env() in [:dev, :test] and File.exists?(".env") do
           key = String.trim(key)
           value = String.trim(value)
           System.put_env(key, value)
+
         _ ->
           :ok
       end

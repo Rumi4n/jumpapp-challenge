@@ -10,7 +10,8 @@ defmodule JumpappEmailSorter.Application do
     children = [
       JumpappEmailSorterWeb.Telemetry,
       JumpappEmailSorter.Repo,
-      {DNSCluster, query: Application.get_env(:jumpapp_email_sorter, :dns_cluster_query) || :ignore},
+      {DNSCluster,
+       query: Application.get_env(:jumpapp_email_sorter, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: JumpappEmailSorter.PubSub},
       # Start Oban
       {Oban, Application.fetch_env!(:jumpapp_email_sorter, Oban)},

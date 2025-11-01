@@ -103,4 +103,3 @@ defmodule JumpappEmailSorter.Emails do
     |> Repo.one()
   end
 end
-

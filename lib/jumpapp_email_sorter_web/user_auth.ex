@@ -57,4 +57,3 @@ defmodule JumpappEmailSorterWeb.UserAuth do
     end)
   end
 end
-

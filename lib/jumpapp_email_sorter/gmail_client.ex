@@ -15,16 +15,16 @@ defmodule JumpappEmailSorter.GmailClient do
     query = Keyword.get(opts, :query, "is:unread")
 
     url = "#{@gmail_api_base}/users/me/messages"
-    
+
     params = [
       maxResults: max_results,
       q: query
     ]
 
     case Req.get(url,
-      auth: {:bearer, access_token},
-      params: params
-    ) do
+           auth: {:bearer, access_token},
+           params: params
+         ) do
       {:ok, %{status: 200, body: body}} ->
         {:ok, body}
 
@@ -48,9 +48,9 @@ defmodule JumpappEmailSorter.GmailClient do
     url = "#{@gmail_api_base}/users/me/messages/#{message_id}"
 
     case Req.get(url,
-      auth: {:bearer, access_token},
-      params: [format: "full"]
-    ) do
+           auth: {:bearer, access_token},
+           params: [format: "full"]
+         ) do
       {:ok, %{status: 200, body: body}} ->
         {:ok, parse_message(body)}
 
@@ -78,9 +78,9 @@ defmodule JumpappEmailSorter.GmailClient do
     }
 
     case Req.post(url,
-      auth: {:bearer, access_token},
-      json: body
-    ) do
+           auth: {:bearer, access_token},
+           json: body
+         ) do
       {:ok, %{status: 200}} ->
         :ok
 
@@ -113,11 +113,12 @@ defmodule JumpappEmailSorter.GmailClient do
     case Req.post(url, json: body) do
       {:ok, %{status: 200, body: response}} ->
         expires_at = DateTime.add(DateTime.utc_now(), response["expires_in"], :second)
-        
-        {:ok, %{
-          access_token: response["access_token"],
-          expires_at: expires_at
-        }}
+
+        {:ok,
+         %{
+           access_token: response["access_token"],
+           expires_at: expires_at
+         }}
 
       {:ok, %{status: status, body: body}} ->
         Logger.error("Token refresh error: #{status} - #{inspect(body)}")
@@ -133,7 +134,7 @@ defmodule JumpappEmailSorter.GmailClient do
 
   defp parse_message(message) do
     headers = extract_headers(message["payload"]["headers"])
-    
+
     %{
       id: message["id"],
       thread_id: message["threadId"],
@@ -180,13 +181,15 @@ defmodule JumpappEmailSorter.GmailClient do
 
   defp extract_body_from_parts(parts) do
     # Try to find text/plain first, then text/html
-    text_part = Enum.find(parts, fn part ->
-      part["mimeType"] == "text/plain"
-    end)
+    text_part =
+      Enum.find(parts, fn part ->
+        part["mimeType"] == "text/plain"
+      end)
 
-    html_part = Enum.find(parts, fn part ->
-      part["mimeType"] == "text/html"
-    end)
+    html_part =
+      Enum.find(parts, fn part ->
+        part["mimeType"] == "text/html"
+      end)
 
     cond do
       text_part && text_part["body"]["data"] ->
@@ -211,4 +214,3 @@ defmodule JumpappEmailSorter.GmailClient do
     |> Base.decode64!(padding: false)
   end
 end
-

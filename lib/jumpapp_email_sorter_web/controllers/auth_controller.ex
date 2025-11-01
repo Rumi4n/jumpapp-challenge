@@ -58,4 +58,3 @@ defmodule JumpappEmailSorterWeb.AuthController do
     |> redirect(to: ~p"/")
   end
 end
-

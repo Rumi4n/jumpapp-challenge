@@ -46,7 +46,11 @@ defmodule JumpappEmailSorter.AIServiceTest do
       """
 
       categories = [
-        %{id: 1, name: "Shopping", description: "Online shopping receipts and shipping notifications"},
+        %{
+          id: 1,
+          name: "Shopping",
+          description: "Online shopping receipts and shipping notifications"
+        },
         %{id: 2, name: "Work", description: "Work-related emails and meetings"},
         %{id: 3, name: "Personal", description: "Personal correspondence"}
       ]
@@ -55,7 +59,7 @@ defmodule JumpappEmailSorter.AIServiceTest do
         {:ok, category_id} ->
           # Should return a valid category ID or nil
           assert category_id == nil or is_integer(category_id)
-          
+
           if category_id do
             assert Enum.any?(categories, fn cat -> cat.id == category_id end)
             category = Enum.find(categories, fn cat -> cat.id == category_id end)
@@ -85,7 +89,7 @@ defmodule JumpappEmailSorter.AIServiceTest do
       System.put_env("GOOGLE_GEMINI_API_KEY", "invalid_key")
 
       email_content = "Test email"
-      
+
       # Should not crash, should return graceful fallback
       assert {:ok, _preview} = AIService.summarize_email(email_content)
 
@@ -99,14 +103,13 @@ defmodule JumpappEmailSorter.AIServiceTest do
   describe "Helper Functions" do
     test "extract_preview/1 returns first 200 characters" do
       long_content = String.duplicate("a", 300)
-      
+
       # Access the private function through the public API
       {:ok, preview} = AIService.summarize_email(long_content)
-      
+
       # When API fails, it should fall back to preview
       # We can't directly test the private function, but we know it's used
       assert is_binary(preview)
     end
   end
 end
-

@@ -14,7 +14,7 @@ defmodule JumpappEmailSorter.Categories do
   def list_categories(user_id) do
     Category
     |> where([c], c.user_id == ^user_id)
-    |> order_by([c], [asc: c.position, asc: c.inserted_at])
+    |> order_by([c], asc: c.position, asc: c.inserted_at)
     |> Repo.all()
   end
 
@@ -93,4 +93,3 @@ defmodule JumpappEmailSorter.Categories do
     Category.changeset(category, attrs)
   end
 end
-

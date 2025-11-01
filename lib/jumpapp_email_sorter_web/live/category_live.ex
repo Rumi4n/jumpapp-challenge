@@ -117,6 +117,11 @@ defmodule JumpappEmailSorterWeb.CategoryLive do
   end
 
   @impl true
+  def handle_event("stop_propagation", _params, socket) do
+    {:noreply, socket}
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
     <div class="min-h-screen bg-gray-50">
@@ -127,10 +132,10 @@ defmodule JumpappEmailSorterWeb.CategoryLive do
             ← Back to Dashboard
           </a>
           <h1 class="text-3xl font-bold text-gray-900">{@category.name}</h1>
+          
           <p class="mt-2 text-gray-600">{@category.description || "No description"}</p>
         </div>
-
-        <%!-- Bulk Actions --%>
+         <%!-- Bulk Actions --%>
         <%= if MapSet.size(@selected_emails) > 0 do %>
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div class="flex items-center justify-between">
@@ -161,8 +166,7 @@ defmodule JumpappEmailSorterWeb.CategoryLive do
             </div>
           </div>
         <% end %>
-
-        <%!-- Emails List --%>
+         <%!-- Emails List --%>
         <div class="bg-white rounded-lg shadow">
           <%= if @emails == [] do %>
             <div class="text-center py-12">
@@ -180,10 +184,9 @@ defmodule JumpappEmailSorterWeb.CategoryLive do
                   }
                   checked={MapSet.size(@selected_emails) == length(@emails)}
                   class="w-4 h-4 text-blue-600 rounded"
-                />
-                <span class="text-sm font-medium text-gray-700">Select All</span>
+                /> <span class="text-sm font-medium text-gray-700">Select All</span>
               </div>
-
+              
               <%= for email <- @emails do %>
                 <div class="p-4 hover:bg-gray-50 transition-colors">
                   <div class="flex items-start space-x-4">
@@ -194,24 +197,26 @@ defmodule JumpappEmailSorterWeb.CategoryLive do
                       checked={MapSet.member?(@selected_emails, email.id)}
                       class="mt-1 w-4 h-4 text-blue-600 rounded"
                     />
-
-                    <div class="flex-1 min-w-0 cursor-pointer" phx-click="show_email" phx-value-id={email.id}>
+                    <div
+                      class="flex-1 min-w-0 cursor-pointer"
+                      phx-click="show_email"
+                      phx-value-id={email.id}
+                    >
                       <div class="flex items-start justify-between">
                         <div class="flex-1">
                           <p class="text-sm font-medium text-gray-900">
                             {email.from_name || email.from_email}
                           </p>
+                          
                           <p class="text-sm text-gray-500">{email.from_email}</p>
                         </div>
-                        <span class="text-xs text-gray-500">
-                          {format_date(email.received_at)}
-                        </span>
+                         <span class="text-xs text-gray-500">{format_date(email.received_at)}</span>
                       </div>
-
+                      
                       <h3 class="mt-2 text-base font-semibold text-gray-900">
                         {email.subject || "(No subject)"}
                       </h3>
-
+                      
                       <p class="mt-1 text-sm text-gray-600 line-clamp-2">
                         {email.summary || email.body_preview}
                       </p>
@@ -224,8 +229,7 @@ defmodule JumpappEmailSorterWeb.CategoryLive do
         </div>
       </div>
     </div>
-
-    <%!-- Email Detail Modal --%>
+     <%!-- Email Detail Modal --%>
     <%= if @show_email_modal && @selected_email do %>
       <div
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
@@ -233,7 +237,7 @@ defmodule JumpappEmailSorterWeb.CategoryLive do
       >
         <div
           class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
-          onclick="event.stopPropagation()"
+          phx-click="stop_propagation"
         >
           <div class="sticky top-0 bg-white border-b border-gray-200 p-6">
             <div class="flex items-start justify-between">
@@ -241,35 +245,39 @@ defmodule JumpappEmailSorterWeb.CategoryLive do
                 <h2 class="text-2xl font-bold text-gray-900">
                   {@selected_email.subject || "(No subject)"}
                 </h2>
+                
                 <div class="mt-2 text-sm text-gray-600">
                   <p>
-                    <span class="font-medium">From:</span>
-                    {@selected_email.from_name || @selected_email.from_email}
-                    &lt;{@selected_email.from_email}&gt;
+                    <span class="font-medium">From:</span> {@selected_email.from_name ||
+                      @selected_email.from_email} &lt;{@selected_email.from_email}&gt;
                   </p>
+                  
                   <p>
-                    <span class="font-medium">Date:</span>
-                    {format_full_date(@selected_email.received_at)}
+                    <span class="font-medium">Date:</span> {format_full_date(
+                      @selected_email.received_at
+                    )}
                   </p>
                 </div>
               </div>
+              
               <button
                 phx-click="hide_email_modal"
-                class="ml-4 text-gray-400 hover:text-gray-600"
+                class="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <.icon name="hero-x-mark" class="w-6 h-6" />
               </button>
             </div>
           </div>
-
+          
           <div class="p-6">
             <%= if @selected_email.summary do %>
               <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p class="text-sm font-medium text-blue-900 mb-1">AI Summary</p>
+                
                 <p class="text-blue-800">{@selected_email.summary}</p>
               </div>
             <% end %>
-
+            
             <div class="prose max-w-none">
               <pre class="whitespace-pre-wrap text-sm text-gray-700 font-sans">
                 {@selected_email.body_text || @selected_email.body_preview}
@@ -290,4 +298,3 @@ defmodule JumpappEmailSorterWeb.CategoryLive do
     Calendar.strftime(datetime, "%B %d, %Y at %I:%M %p")
   end
 end
-

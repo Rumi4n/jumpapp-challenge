@@ -7,7 +7,7 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
 
   require Logger
 
-  alias JumpappEmailSorter.{Accounts, Categories, Emails, GmailClient, AIService, Repo}
+  alias JumpappEmailSorter.{Accounts, Categories, Emails, GmailClient, AIService}
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"gmail_account_id" => gmail_account_id}}) do
@@ -99,7 +99,14 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
     }
 
     case Emails.create_email(email_attrs) do
-      {:ok, _email} ->
+      {:ok, email} ->
+        # Broadcast email update to LiveViews
+        Phoenix.PubSub.broadcast(
+          JumpappEmailSorter.PubSub,
+          "user:#{gmail_account.user_id}",
+          {:email_imported, email}
+        )
+
         # Archive the email in Gmail
         case GmailClient.archive_message(gmail_account.access_token, message.id) do
           :ok ->
@@ -108,7 +115,8 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
 
           {:error, error} ->
             Logger.error("Failed to archive email #{message.id}: #{inspect(error)}")
-            :ok  # Still consider import successful
+            # Still consider import successful
+            :ok
         end
 
       {:error, changeset} ->
@@ -161,4 +169,3 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
 
   defp parse_date(_), do: DateTime.utc_now()
 end
-

@@ -23,4 +23,3 @@ defmodule JumpappEmailSorter.Categories.Category do
     |> validate_length(:description, max: 500)
   end
 end
-
