@@ -21,12 +21,28 @@ defmodule JumpappEmailSorterWeb.AuthController do
       token_expires_at: DateTime.from_unix!(auth.credentials.expires_at)
     }
 
+    gmail_account_params = %{
+      email: auth.info.email,
+      access_token: auth.credentials.token,
+      refresh_token: auth.credentials.refresh_token,
+      token_expires_at: DateTime.from_unix!(auth.credentials.expires_at)
+    }
+
     case Accounts.upsert_user_from_oauth(user_params) do
       {:ok, user} ->
-        conn
-        |> put_session(:user_id, user.id)
-        |> put_flash(:info, "Successfully authenticated!")
-        |> redirect(to: ~p"/dashboard")
+        # Also create/update the gmail account
+        case Accounts.upsert_gmail_account_from_oauth(user, gmail_account_params) do
+          {:ok, _gmail_account} ->
+            conn
+            |> put_session(:user_id, user.id)
+            |> put_flash(:info, "Successfully authenticated!")
+            |> redirect(to: ~p"/dashboard")
+
+          {:error, _changeset} ->
+            conn
+            |> put_flash(:error, "Failed to connect Gmail account.")
+            |> redirect(to: ~p"/")
+        end
 
       {:error, _changeset} ->
         conn

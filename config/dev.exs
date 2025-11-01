@@ -3,7 +3,7 @@ import Config
 # Configure your database
 config :jumpapp_email_sorter, JumpappEmailSorter.Repo,
   username: "postgres",
-  password: "postgres",
+  password: "1de27c0a32a643168be2ded7e1a71114",
   hostname: "localhost",
   database: "jumpapp_email_sorter_dev",
   stacktrace: true,

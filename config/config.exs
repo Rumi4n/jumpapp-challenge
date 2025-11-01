@@ -70,9 +70,7 @@ config :ueberauth, Ueberauth,
     ]}
   ]
 
-config :ueberauth, Ueberauth.Strategy.Google.OAuth,
-  client_id: System.get_env("GOOGLE_CLIENT_ID"),
-  client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
+# OAuth credentials are configured in runtime.exs
 
 # Configure Oban
 config :jumpapp_email_sorter, Oban,

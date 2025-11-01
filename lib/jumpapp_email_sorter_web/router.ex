@@ -17,7 +17,7 @@ defmodule JumpappEmailSorterWeb.Router do
     plug :accepts, ["json"]
   end
 
-  pipeline :require_authenticated_user do
+  pipeline :require_auth do
     plug :require_authenticated_user
   end
 
@@ -36,10 +36,13 @@ defmodule JumpappEmailSorterWeb.Router do
   end
 
   scope "/", JumpappEmailSorterWeb do
-    pipe_through [:browser, :require_authenticated_user]
+    pipe_through [:browser, :require_auth]
 
-    live "/dashboard", DashboardLive
-    live "/categories/:id", CategoryLive
+    live_session :require_authenticated_user,
+      on_mount: [{JumpappEmailSorterWeb.UserAuth, :require_authenticated_user}] do
+      live "/dashboard", DashboardLive
+      live "/categories/:id", CategoryLive
+    end
   end
 
   # Other scopes may use custom stacks.

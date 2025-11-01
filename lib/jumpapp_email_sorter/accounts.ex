@@ -84,6 +84,19 @@ defmodule JumpappEmailSorter.Accounts do
   end
 
   @doc """
+  Creates or updates a gmail account from OAuth data.
+  """
+  def upsert_gmail_account_from_oauth(user, oauth_data) do
+    case get_gmail_account_by_email(user.id, oauth_data.email) do
+      nil ->
+        create_gmail_account(user, oauth_data)
+
+      gmail_account ->
+        update_gmail_account_tokens(gmail_account, oauth_data)
+    end
+  end
+
+  @doc """
   Updates a gmail account.
   """
   def update_gmail_account(%GmailAccount{} = gmail_account, attrs) do

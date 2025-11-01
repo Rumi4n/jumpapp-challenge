@@ -7,6 +7,31 @@ import Config
 # any compile-time configuration in here, as it won't be applied.
 # The block below contains prod specific runtime configuration.
 
+# Load .env file in development/test
+if config_env() in [:dev, :test] and File.exists?(".env") do
+  File.read!(".env")
+  |> String.split("\n", trim: true)
+  |> Enum.each(fn line ->
+    line = String.trim(line)
+    # Skip comments and empty lines
+    unless String.starts_with?(line, "#") or line == "" do
+      case String.split(line, "=", parts: 2) do
+        [key, value] ->
+          key = String.trim(key)
+          value = String.trim(value)
+          System.put_env(key, value)
+        _ ->
+          :ok
+      end
+    end
+  end)
+end
+
+# Configure Google OAuth for all environments
+config :ueberauth, Ueberauth.Strategy.Google.OAuth,
+  client_id: System.get_env("GOOGLE_CLIENT_ID"),
+  client_secret: System.get_env("GOOGLE_CLIENT_SECRET")
+
 # ## Using releases
 #
 # If you use `mix release`, you need to explicitly enable the server

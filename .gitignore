@@ -35,3 +35,15 @@ jumpapp_email_sorter-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
