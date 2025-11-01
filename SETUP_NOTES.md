@@ -46,8 +46,8 @@ Before running the app, set these environment variables (or create a `.env` file
 export GOOGLE_CLIENT_ID="your_client_id"
 export GOOGLE_CLIENT_SECRET="your_client_secret"
 
-# Anthropic AI (get from https://console.anthropic.com/)
-export ANTHROPIC_API_KEY="your_api_key"
+# OpenAI API (get from https://platform.openai.com)
+export OPENAI_API_KEY="your_api_key"
 ```
 
 ### 📋 Next Steps

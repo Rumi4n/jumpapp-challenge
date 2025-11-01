@@ -59,8 +59,14 @@ defmodule JumpappEmailSorter.Categories do
 
     position = (max_position || 0) + 1
 
+    # Ensure attrs is a map with string keys for proper casting
+    attrs =
+      attrs
+      |> Map.new(fn {k, v} -> {to_string(k), v} end)
+      |> Map.put("position", position)
+
     %Category{user_id: user_id}
-    |> Category.changeset(Map.put(attrs, :position, position))
+    |> Category.changeset(attrs)
     |> Repo.insert()
   end
 

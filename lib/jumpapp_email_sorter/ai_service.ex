@@ -1,12 +1,12 @@
 defmodule JumpappEmailSorter.AIService do
   @moduledoc """
-  AI service for email categorization and summarization using Anthropic Claude.
+  AI service for email categorization and summarization using OpenAI.
   """
 
   require Logger
 
-  @anthropic_api_base "https://api.anthropic.com/v1"
-  @model "claude-3-haiku-20240307"  # Using Haiku for cost efficiency
+  @openai_api_base "https://api.openai.com/v1"
+  @model "gpt-4o-mini"  # Using GPT-4o-mini for cost efficiency
 
   @doc """
   Categorizes an email based on available categories.
@@ -18,7 +18,7 @@ defmodule JumpappEmailSorter.AIService do
     else
       prompt = build_categorization_prompt(email_content, categories)
       
-      case call_claude(prompt) do
+      case call_openai(prompt) do
         {:ok, response} ->
           parse_category_response(response, categories)
 
@@ -40,7 +40,7 @@ defmodule JumpappEmailSorter.AIService do
     #{truncate_content(email_content, 2000)}
     """
 
-    case call_claude(prompt) do
+    case call_openai(prompt) do
       {:ok, response} ->
         {:ok, String.trim(response)}
 
@@ -71,7 +71,7 @@ defmodule JumpappEmailSorter.AIService do
     #{truncate_content(html_content, 3000)}
     """
 
-    case call_claude(prompt) do
+    case call_openai(prompt) do
       {:ok, response} ->
         parse_unsubscribe_response(response)
 
@@ -83,42 +83,42 @@ defmodule JumpappEmailSorter.AIService do
 
   # Private functions
 
-  defp call_claude(prompt) do
-    api_key = System.get_env("ANTHROPIC_API_KEY")
+  defp call_openai(prompt) do
+    api_key = System.get_env("OPENAI_API_KEY")
 
     if !api_key do
-      Logger.error("ANTHROPIC_API_KEY not set")
+      Logger.error("OPENAI_API_KEY not set")
       {:error, :no_api_key}
     else
-      url = "#{@anthropic_api_base}/messages"
+      url = "#{@openai_api_base}/chat/completions"
 
       body = %{
         model: @model,
-        max_tokens: 1024,
         messages: [
           %{
             role: "user",
             content: prompt
           }
-        ]
+        ],
+        max_tokens: 1024,
+        temperature: 0.7
       }
 
       headers = [
-        {"x-api-key", api_key},
-        {"anthropic-version", "2023-06-01"}
+        {"authorization", "Bearer #{api_key}"}
       ]
 
       case Req.post(url, json: body, headers: headers) do
         {:ok, %{status: 200, body: response}} ->
-          content = get_in(response, ["content", Access.at(0), "text"])
+          content = get_in(response, ["choices", Access.at(0), "message", "content"])
           {:ok, content}
 
         {:ok, %{status: status, body: body}} ->
-          Logger.error("Anthropic API error: #{status} - #{inspect(body)}")
+          Logger.error("OpenAI API error: #{status} - #{inspect(body)}")
           {:error, {:api_error, status, body}}
 
         {:error, error} ->
-          Logger.error("Anthropic API request failed: #{inspect(error)}")
+          Logger.error("OpenAI API request failed: #{inspect(error)}")
           {:error, error}
       end
     end

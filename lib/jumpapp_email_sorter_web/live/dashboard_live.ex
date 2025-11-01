@@ -47,7 +47,12 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
         {:noreply, socket}
 
       {:error, changeset} ->
-        {:noreply, assign(socket, category_form: to_form(changeset))}
+        socket =
+          socket
+          |> assign(:category_form, to_form(changeset))
+          |> put_flash(:error, "Failed to create category. Please check the form.")
+
+        {:noreply, socket}
     end
   end
 
@@ -74,13 +79,14 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-gray-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <%!-- Header --%>
-        <div class="mb-8">
-          <h1 class="text-3xl font-bold text-gray-900">Email Dashboard</h1>
-          <p class="mt-2 text-gray-600">Manage your email categories and accounts</p>
-        </div>
+    <Layouts.app flash={@flash}>
+      <div class="min-h-screen bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <%!-- Header --%>
+          <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Email Dashboard</h1>
+            <p class="mt-2 text-gray-600">Manage your email categories and accounts</p>
+          </div>
 
         <%!-- Gmail Accounts Section --%>
         <div class="bg-white rounded-lg shadow p-6 mb-8">
@@ -230,6 +236,7 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
         </div>
       </div>
     <% end %>
+    </Layouts.app>
     """
   end
 end

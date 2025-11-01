@@ -27,6 +27,15 @@ if config_env() in [:dev, :test] and File.exists?(".env") do
   end)
 end
 
+# Configure database for development/test (after loading .env)
+if config_env() in [:dev, :test] do
+  config :jumpapp_email_sorter, JumpappEmailSorter.Repo,
+    username: System.get_env("POSTGRES_USER") || "postgres",
+    password: System.get_env("POSTGRES_PASSWORD") || "postgres",
+    hostname: System.get_env("POSTGRES_HOST") || "localhost",
+    database: System.get_env("POSTGRES_DB") || "jumpapp_email_sorter_#{config_env()}"
+end
+
 # Configure Google OAuth for all environments
 config :ueberauth, Ueberauth.Strategy.Google.OAuth,
   client_id: System.get_env("GOOGLE_CLIENT_ID"),

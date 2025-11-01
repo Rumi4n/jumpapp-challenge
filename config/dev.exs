@@ -1,11 +1,8 @@
 import Config
 
 # Configure your database
+# Note: Database credentials are loaded from .env file in config/runtime.exs
 config :jumpapp_email_sorter, JumpappEmailSorter.Repo,
-  username: "postgres",
-  password: "1de27c0a32a643168be2ded7e1a71114",
-  hostname: "localhost",
-  database: "jumpapp_email_sorter_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

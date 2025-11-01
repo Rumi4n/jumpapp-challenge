@@ -58,11 +58,12 @@ cd assets && npm install && cd ..
 6. Add authorized redirect URI: `http://localhost:4000/auth/google/callback`
 7. Copy the Client ID and Client Secret
 
-### 4. Get Anthropic API Key
+### 4. Get OpenAI API Key
 
-1. Sign up at [Anthropic Console](https://console.anthropic.com/)
-2. Create an API key
-3. Copy the key
+1. Sign up at [OpenAI Platform](https://platform.openai.com)
+2. Go to API Keys section
+3. Create a new API key
+4. Copy the key (starts with `sk-proj-...` or `sk-...`)
 
 ### 5. Configure Environment Variables
 
@@ -75,7 +76,7 @@ cp env.example .env
 # Edit .env and add your credentials:
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
-ANTHROPIC_API_KEY=your_anthropic_api_key
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 **Note**: The `.env` file is automatically loaded in development and test environments. In production, set environment variables through your hosting platform.
