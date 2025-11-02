@@ -97,14 +97,14 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
           <%!-- Header --%>
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-900">Email Dashboard</h1>
-            
+
             <p class="mt-2 text-gray-600">Manage your email categories and accounts</p>
           </div>
-           <%!-- Gmail Accounts Section --%>
+          <%!-- Gmail Accounts Section --%>
           <div class="bg-white rounded-lg shadow p-6 mb-8">
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-xl font-semibold text-gray-900">Connected Accounts</h2>
-              
+
               <a
                 href="/auth/google"
                 class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -112,7 +112,7 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
                 + Add Account
               </a>
             </div>
-            
+
             <%= if @gmail_accounts == [] do %>
               <p class="text-gray-500 text-center py-8">
                 No Gmail accounts connected yet. Click "Add Account" to get started.
@@ -125,10 +125,10 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
                       <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
                         {String.first(account.email)}
                       </div>
-                      
+
                       <div>
                         <p class="font-medium text-gray-900">{account.email}</p>
-                        
+
                         <p class="text-sm text-gray-500">
                           Connected {Calendar.strftime(account.inserted_at, "%B %d, %Y")}
                         </p>
@@ -139,11 +139,11 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
               </div>
             <% end %>
           </div>
-           <%!-- Categories Section --%>
+          <%!-- Categories Section --%>
           <div class="bg-white rounded-lg shadow p-6">
             <div class="flex items-center justify-between mb-6">
               <h2 class="text-xl font-semibold text-gray-900">Email Categories</h2>
-              
+
               <button
                 phx-click="show_add_category"
                 class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
@@ -151,13 +151,13 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
                 + New Category
               </button>
             </div>
-            
+
             <%= if @categories == [] do %>
               <div class="text-center py-12">
                 <p class="text-gray-500 mb-4">
                   No categories yet. Create your first category to start organizing emails!
                 </p>
-                
+
                 <button
                   phx-click="show_add_category"
                   class="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
@@ -175,18 +175,18 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
                     <div class="flex items-start justify-between">
                       <div class="flex-1">
                         <h3 class="text-lg font-semibold text-gray-900 mb-2">{category.name}</h3>
-                        
+
                         <p class="text-sm text-gray-600 mb-4 line-clamp-2">
                           {category.description || "No description"}
                         </p>
-                        
+
                         <div class="flex items-center justify-between">
                           <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                             {count} {if count == 1, do: "email", else: "emails"}
                           </span>
                         </div>
                       </div>
-                      
+
                       <button
                         phx-click="delete_category"
                         phx-value-id={category.id}
@@ -204,12 +204,12 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
           </div>
         </div>
       </div>
-       <%!-- Add Category Modal --%>
+      <%!-- Add Category Modal --%>
       <%= if @show_category_modal do %>
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <h3 class="text-xl font-semibold text-gray-900 mb-4">Create New Category</h3>
-            
+
             <.form for={@category_form} phx-submit="save_category" id="category-form">
               <div class="space-y-4">
                 <div>
@@ -221,7 +221,7 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <.input
@@ -231,7 +231,7 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
                     rows="3"
                   />
                 </div>
-                
+
                 <div class="flex justify-end space-x-3 mt-6">
                   <button
                     type="button"

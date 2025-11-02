@@ -11,18 +11,31 @@ defmodule JumpappEmailSorterWeb.AuthController do
   end
 
   def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
-    user_params = %{
+    gmail_account_params = %{
       email: auth.info.email,
-      google_id: auth.uid,
-      name: auth.info.name,
-      picture: auth.info.image,
       access_token: auth.credentials.token,
       refresh_token: auth.credentials.refresh_token,
       token_expires_at: DateTime.from_unix!(auth.credentials.expires_at)
     }
 
-    gmail_account_params = %{
+    # Check if user is already logged in (adding additional account)
+    case get_session(conn, :user_id) do
+      nil ->
+        # Initial login - create/update user and set session
+        handle_initial_login(conn, auth, gmail_account_params)
+
+      user_id ->
+        # User already logged in - just add the gmail account to existing user
+        handle_add_account(conn, user_id, gmail_account_params)
+    end
+  end
+
+  defp handle_initial_login(conn, auth, gmail_account_params) do
+    user_params = %{
       email: auth.info.email,
+      google_id: auth.uid,
+      name: auth.info.name,
+      picture: auth.info.image,
       access_token: auth.credentials.token,
       refresh_token: auth.credentials.refresh_token,
       token_expires_at: DateTime.from_unix!(auth.credentials.expires_at)
@@ -48,6 +61,29 @@ defmodule JumpappEmailSorterWeb.AuthController do
         conn
         |> put_flash(:error, "Failed to create or update user.")
         |> redirect(to: ~p"/")
+    end
+  end
+
+  defp handle_add_account(conn, user_id, gmail_account_params) do
+    user = Accounts.get_user!(user_id)
+
+    case Accounts.upsert_gmail_account_from_oauth(user, gmail_account_params) do
+      {:ok, _gmail_account} ->
+        conn
+        |> put_flash(:info, "Gmail account added successfully!")
+        |> redirect(to: ~p"/dashboard")
+
+      {:error, changeset} ->
+        error_msg =
+          if changeset.errors[:email] do
+            "This Gmail account is already connected."
+          else
+            "Failed to add Gmail account."
+          end
+
+        conn
+        |> put_flash(:error, error_msg)
+        |> redirect(to: ~p"/dashboard")
     end
   end
 

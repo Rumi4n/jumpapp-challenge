@@ -107,16 +107,35 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
           {:email_imported, email}
         )
 
-        # Archive the email in Gmail
-        case GmailClient.archive_message(gmail_account.access_token, message.id) do
-          :ok ->
-            Logger.info("Successfully imported and archived email #{message.id}")
-            :ok
+        # Only archive the email in Gmail if it was successfully categorized
+        # Uncategorized emails stay in inbox for manual handling
+        if email.category_id do
+          Logger.info(
+            "Attempting to archive email #{message.id} from account #{gmail_account.email} (category: #{email.category_id})"
+          )
 
-          {:error, error} ->
-            Logger.error("Failed to archive email #{message.id}: #{inspect(error)}")
-            # Still consider import successful
-            :ok
+          case GmailClient.archive_message(gmail_account.access_token, message.id) do
+            :ok ->
+              Logger.info(
+                "✓ Successfully archived email #{message.id} in #{gmail_account.email}"
+              )
+
+              :ok
+
+            {:error, error} ->
+              Logger.error(
+                "✗ Failed to archive email #{message.id} in #{gmail_account.email}: #{inspect(error)}"
+              )
+
+              # Still consider import successful
+              :ok
+          end
+        else
+          Logger.info(
+            "Email #{message.id} from #{gmail_account.email} not categorized - leaving in inbox"
+          )
+
+          :ok
         end
 
       {:error, changeset} ->

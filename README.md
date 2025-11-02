@@ -10,7 +10,7 @@ An intelligent email management application that automatically categorizes and s
 - 📧 **Multi-Account Support** - Connect and manage multiple Gmail accounts
 - 🗂️ **Custom Categories** - Create categories with descriptions to guide AI sorting
 - 🔕 **Smart Unsubscribe** - Intelligent unsubscribe system with one-click and form-based unsubscription
-- 📦 **Auto-Archive** - Automatically archives processed emails in Gmail
+- 📦 **Smart Archive** - Automatically archives categorized emails in Gmail (uncategorized emails stay in inbox)
 - ⚡ **Background Processing** - Polls Gmail every 3 minutes for new emails
 - 🎨 **Modern UI** - Clean, responsive interface built with Tailwind CSS
 
@@ -122,9 +122,33 @@ Visit `http://localhost:4000`
 
 ### Adding Multiple Accounts
 
-- Click "Add Account" on the dashboard
-- Sign in with another Gmail account
-- All accounts will be monitored for new emails
+The app supports managing multiple Gmail accounts from a single dashboard:
+
+1. **Initial Login** - Sign in with your main Google account
+   - This becomes your "main" account
+   - All categories belong to this account
+   
+2. **Add Additional Accounts** - Click "+ Add Account" on the dashboard
+   - Sign in with another Gmail account
+   - The new account is linked to your main account
+   - **You stay logged in** - no session change
+   - Categories remain visible
+   
+3. **Multi-Account Benefits**
+   - All connected accounts shown in "Connected Accounts" section
+   - Emails imported from all accounts
+   - Shared categories across all accounts
+   - Single dashboard to manage everything
+
+**Important**: When you click "+ Add Account", you're adding a Gmail inbox to your existing user account, not creating a new user. Your session and categories are preserved.
+
+### Email Archiving Behavior
+
+**Important**: The app only archives emails in Gmail that are successfully categorized by AI:
+- ✅ **Categorized emails** → Saved to database + Archived in Gmail
+- ⚠️ **Uncategorized emails** → Saved to database + **Stay in Gmail inbox**
+
+This ensures you don't lose track of emails that don't fit your categories. Uncategorized emails remain in your inbox for manual review, while still being tracked in the app's database.
 
 ### Unsubscribe Feature
 
@@ -178,7 +202,7 @@ lib/
 ## Background Jobs
 
 - **GmailPollWorker** - Runs every 3 minutes to check for new emails across all accounts
-- **EmailImportWorker** - Fetches, categorizes, summarizes, and archives individual emails
+- **EmailImportWorker** - Fetches, categorizes, summarizes, and archives emails (only archives if successfully categorized)
 - **UnsubscribeWorker** - Processes unsubscribe requests
 
 ## API Rate Limits

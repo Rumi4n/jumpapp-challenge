@@ -77,22 +77,29 @@ defmodule JumpappEmailSorter.GmailClient do
       removeLabelIds: ["INBOX"]
     }
 
+    Logger.debug("Archiving message #{message_id} via Gmail API")
+
     case Req.post(url,
            auth: {:bearer, access_token},
            json: body
          ) do
       {:ok, %{status: 200}} ->
+        Logger.debug("Gmail API: Successfully archived message #{message_id}")
         :ok
 
       {:ok, %{status: 401}} ->
+        Logger.error("Gmail API: Unauthorized (401) when archiving #{message_id}")
         {:error, :unauthorized}
 
       {:ok, %{status: status, body: body}} ->
-        Logger.error("Gmail API error: #{status} - #{inspect(body)}")
+        Logger.error(
+          "Gmail API error when archiving #{message_id}: #{status} - #{inspect(body)}"
+        )
+
         {:error, {:api_error, status, body}}
 
       {:error, error} ->
-        Logger.error("Gmail API request failed: #{inspect(error)}")
+        Logger.error("Gmail API request failed for #{message_id}: #{inspect(error)}")
         {:error, error}
     end
   end
