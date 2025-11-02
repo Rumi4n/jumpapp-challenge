@@ -75,7 +75,9 @@ defmodule JumpappEmailSorter.MixProject do
       # HTTP Client (already have req, but add hackney for compatibility)
       {:hackney, "~> 1.20"},
       # HTML Parsing for unsubscribe links
-      {:floki, "~> 0.36"}
+      {:floki, "~> 0.36"},
+      # Mocking library for tests
+      {:mox, "~> 1.0", only: :test}
     ]
   end
 

@@ -3,6 +3,8 @@ defmodule JumpappEmailSorter.GmailClient do
   Gmail API client for interacting with Gmail.
   """
 
+  @behaviour JumpappEmailSorter.GmailClientBehaviour
+
   require Logger
 
   @gmail_api_base "https://gmail.googleapis.com/gmail/v1"

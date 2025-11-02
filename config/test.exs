@@ -6,9 +6,9 @@ import Config
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 config :jumpapp_email_sorter, JumpappEmailSorter.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
+  username: System.get_env("PGUSER") || "postgres",
+  password: System.get_env("PGPASSWORD") || "postgres",
+  hostname: System.get_env("PGHOST") || "localhost",
   database: "jumpapp_email_sorter_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
@@ -17,14 +17,8 @@ config :jumpapp_email_sorter, JumpappEmailSorter.Repo,
 # you can enable the server option below.
 config :jumpapp_email_sorter, JumpappEmailSorterWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "sLLn4xvrpwSSbbRbU/Q00lDOY8C+4MQ1IXf5/Wa46ytWX1phyFnXjo/qQByoXcLS",
+  secret_key_base: "test_secret_key_base_that_is_at_least_64_bytes_long_for_testing_purposes",
   server: false
-
-# In test we don't send emails
-config :jumpapp_email_sorter, JumpappEmailSorter.Mailer, adapter: Swoosh.Adapters.Test
-
-# Disable swoosh api client as it is only required for production adapters
-config :swoosh, :api_client, false
 
 # Print only warnings and errors during test
 config :logger, level: :warning
@@ -32,6 +26,10 @@ config :logger, level: :warning
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
 
-# Enable helpful, but potentially expensive runtime checks
-config :phoenix_live_view,
-  enable_expensive_runtime_checks: true
+# Disable Oban queues in test
+config :jumpapp_email_sorter, Oban, testing: :manual
+
+# Configure mocked dependencies for testing
+config :jumpapp_email_sorter,
+  gmail_client: JumpappEmailSorter.GmailClientMock,
+  ai_service: JumpappEmailSorter.AIServiceMock

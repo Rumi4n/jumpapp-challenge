@@ -9,6 +9,10 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
 
   alias JumpappEmailSorter.{Accounts, Categories, Emails, GmailClient, AIService}
 
+  # Allow dependency injection for testing
+  @gmail_client Application.compile_env(:jumpapp_email_sorter, :gmail_client, GmailClient)
+  @ai_service Application.compile_env(:jumpapp_email_sorter, :ai_service, AIService)
+
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"gmail_account_id" => gmail_account_id}}) do
     Logger.info("Importing emails for account #{gmail_account_id}")
@@ -20,7 +24,7 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
     categories = Categories.list_categories(user_id)
 
     # List unread messages
-    case GmailClient.list_messages(gmail_account.access_token, query: "is:unread") do
+    case gmail_client().list_messages(gmail_account.access_token, query: "is:unread") do
       {:ok, %{"messages" => messages}} when is_list(messages) ->
         Logger.info("Found #{length(messages)} unread messages")
 
@@ -50,7 +54,7 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
       Logger.debug("Email #{message_id} already imported, skipping")
       :ok
     else
-      case GmailClient.get_message(gmail_account.access_token, message_id) do
+      case gmail_client().get_message(gmail_account.access_token, message_id) do
         {:ok, message} ->
           process_and_save_email(gmail_account, message, categories)
 
@@ -70,10 +74,10 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
     """
 
     # Categorize with AI
-    {:ok, category_id} = AIService.categorize_email(email_content, categories)
+    {:ok, category_id} = ai_service().categorize_email(email_content, categories)
 
     # Summarize with AI
-    {:ok, summary} = AIService.summarize_email(email_content)
+    {:ok, summary} = ai_service().summarize_email(email_content)
 
     # Extract unsubscribe link
     unsubscribe_link = extract_unsubscribe_link(message.body, message.list_unsubscribe)
@@ -114,7 +118,7 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
             "Attempting to archive email #{message.id} from account #{gmail_account.email} (category: #{email.category_id})"
           )
 
-          case GmailClient.archive_message(gmail_account.access_token, message.id) do
+          case gmail_client().archive_message(gmail_account.access_token, message.id) do
             :ok ->
               Logger.info("✓ Successfully archived email #{message.id} in #{gmail_account.email}")
 
@@ -175,6 +179,10 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
       end
     end)
   end
+
+  # Helper functions to access injected dependencies
+  defp gmail_client, do: @gmail_client
+  defp ai_service, do: @ai_service
 
   defp parse_date(date_string) when is_binary(date_string) do
     # Try to parse the date, fallback to current time if it fails

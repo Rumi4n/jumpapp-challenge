@@ -104,7 +104,9 @@ defmodule JumpappEmailSorter.Workers.UnsubscribeWorker do
     headers
     |> Enum.find(fn {key, _} -> String.downcase(key) == "content-type" end)
     |> case do
-      {_, value} -> String.downcase(value)
+      {_, value} when is_binary(value) -> String.downcase(value)
+      {_, [value | _]} when is_binary(value) -> String.downcase(value)
+      {_, value} when is_list(value) -> ""
       nil -> ""
     end
   end

@@ -3,6 +3,8 @@ defmodule JumpappEmailSorter.AIService do
   AI service for email categorization and summarization using Google Gemini.
   """
 
+  @behaviour JumpappEmailSorter.AIServiceBehaviour
+
   require Logger
 
   @gemini_api_base "https://generativelanguage.googleapis.com/v1beta"
@@ -56,7 +58,7 @@ defmodule JumpappEmailSorter.AIService do
   @doc """
   Analyzes an unsubscribe page and attempts to identify the unsubscribe action.
   """
-  def analyze_unsubscribe_page(html_content) do
+  def analyze_unsubscribe_page(_url, html_content) do
     prompt = """
     Analyze this unsubscribe page HTML and identify how to unsubscribe. Look for:
     1. Unsubscribe buttons or links
@@ -199,7 +201,7 @@ defmodule JumpappEmailSorter.AIService do
     end
   end
 
-  defp parse_unsubscribe_response(response) do
+  defp parse_unsubscribe_response(response) when is_binary(response) do
     # Clean the response - AI often wraps JSON in markdown code blocks
     cleaned_response =
       response
@@ -228,6 +230,8 @@ defmodule JumpappEmailSorter.AIService do
         {:error, :invalid_response}
     end
   end
+
+  defp parse_unsubscribe_response(nil), do: {:ok, %{"has_form" => false, "fields" => []}}
 
   defp truncate_content(content, max_length) do
     if String.length(content) > max_length do

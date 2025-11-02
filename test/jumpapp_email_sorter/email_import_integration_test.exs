@@ -240,7 +240,9 @@ defmodule JumpappEmailSorter.EmailImportIntegrationTest do
 
       # Should fail with unique constraint
       assert {:error, changeset} = result
-      assert changeset.errors[:gmail_message_id] != nil
+      # The unique constraint is on [:gmail_account_id, :gmail_message_id]
+      # so the error might be on either field
+      assert changeset.errors[:gmail_message_id] != nil or changeset.errors[:gmail_account_id] != nil
 
       # Verify we can find the original
       found_email = Emails.get_email_by_gmail_id(gmail_account.id, gmail_message_id)

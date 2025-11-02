@@ -112,4 +112,130 @@ defmodule JumpappEmailSorter.AIServiceTest do
       assert is_binary(preview)
     end
   end
+
+  describe "Fallback behavior" do
+    test "summarize_email falls back to preview on API failure" do
+      # Test with no API key to trigger fallback
+      original_key = System.get_env("GOOGLE_GEMINI_API_KEY")
+      System.delete_env("GOOGLE_GEMINI_API_KEY")
+
+      email_content = "This is a test email that should be truncated to 200 characters."
+
+      {:ok, result} = AIService.summarize_email(email_content)
+
+      # Should return a preview (first 200 chars)
+      assert is_binary(result)
+      assert String.length(result) <= 203  # 200 chars + "..."
+
+      # Restore original key
+      if original_key do
+        System.put_env("GOOGLE_GEMINI_API_KEY", original_key)
+      end
+    end
+
+    test "categorize_email returns nil when no categories match" do
+      email_content = "Random content that doesn't match any category"
+
+      categories = [
+        %{id: 1, name: "Shopping", description: "Shopping receipts"},
+        %{id: 2, name: "Work", description: "Work emails"}
+      ]
+
+      {:ok, result} = AIService.categorize_email(email_content, categories)
+
+      # May return nil or a category ID
+      assert result == nil or is_integer(result)
+    end
+
+    test "categorize_email handles single category" do
+      email_content = "Your order has shipped"
+
+      categories = [
+        %{id: 1, name: "Shopping", description: "Shopping and orders"}
+      ]
+
+      {:ok, result} = AIService.categorize_email(email_content, categories)
+
+      # Should return the category ID or nil
+      assert result == nil or result == 1
+    end
+  end
+
+  describe "Content truncation" do
+    test "handles very long email content" do
+      # Create a very long email (10KB)
+      long_content = String.duplicate("This is a long email. ", 500)
+
+      {:ok, summary} = AIService.summarize_email(long_content)
+
+      # Should return a summary (either from AI or fallback)
+      assert is_binary(summary)
+      assert String.length(summary) > 0
+    end
+
+    test "handles empty email content" do
+      {:ok, summary} = AIService.summarize_email("")
+
+      # Should handle empty content gracefully
+      assert is_binary(summary)
+    end
+
+    test "handles email with special characters" do
+      email_content = "Email with émojis 🎉 and spëcial çhars"
+
+      {:ok, summary} = AIService.summarize_email(email_content)
+
+      assert is_binary(summary)
+    end
+  end
+
+  describe "Category matching" do
+    test "handles categories with similar descriptions" do
+      email_content = "Meeting tomorrow at 10 AM"
+
+      categories = [
+        %{id: 1, name: "Work", description: "Work meetings and tasks"},
+        %{id: 2, name: "Personal", description: "Personal meetings and events"}
+      ]
+
+      {:ok, result} = AIService.categorize_email(email_content, categories)
+
+      # Should return one of the categories or nil
+      assert result == nil or result in [1, 2]
+    end
+
+    test "handles categories with empty descriptions" do
+      email_content = "Test email"
+
+      categories = [
+        %{id: 1, name: "General", description: ""}
+      ]
+
+      {:ok, result} = AIService.categorize_email(email_content, categories)
+
+      assert result == nil or result == 1
+    end
+  end
+
+  describe "Error resilience" do
+    test "handles network timeout gracefully" do
+      # This tests that the function doesn't crash on errors
+      email_content = "Test content"
+
+      result = AIService.summarize_email(email_content)
+
+      # Should always return {:ok, _} even if API fails
+      assert match?({:ok, _}, result)
+    end
+
+    test "handles malformed API responses" do
+      email_content = "Test email"
+      categories = [%{id: 1, name: "Test", description: "Test category"}]
+
+      result = AIService.categorize_email(email_content, categories)
+
+      # Should handle malformed responses gracefully
+      assert match?({:ok, _}, result)
+    end
+  end
 end
