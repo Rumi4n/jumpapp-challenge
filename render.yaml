@@ -21,7 +21,7 @@ services:
       - key: GOOGLE_GEMINI_API_KEY
         sync: false
       - key: POOL_SIZE
-        value: 2
+        value: 5
 
 databases:
   - name: jumpapp-db
