@@ -7,6 +7,9 @@ defmodule JumpappEmailSorter.Emails do
   alias JumpappEmailSorter.Repo
 
   alias JumpappEmailSorter.Emails.{Email, UnsubscribeAttempt}
+  alias JumpappEmailSorter.{Accounts, GmailClient}
+
+  require Logger
 
   @doc """
   Returns the list of emails for a category.
@@ -67,11 +70,60 @@ defmodule JumpappEmailSorter.Emails do
 
   @doc """
   Deletes multiple emails by IDs.
+  Also deletes them from Gmail.
   """
   def delete_emails(email_ids) when is_list(email_ids) do
+    # Fetch emails with their Gmail account information
+    emails =
+      Email
+      |> where([e], e.id in ^email_ids)
+      |> preload(:gmail_account)
+      |> Repo.all()
+
+    # Delete from Gmail first
+    Enum.each(emails, fn email ->
+      delete_email_from_gmail(email)
+    end)
+
+    # Then delete from database
     Email
     |> where([e], e.id in ^email_ids)
     |> Repo.delete_all()
+  end
+
+  # Private helper to delete email from Gmail (moves to trash)
+  defp delete_email_from_gmail(%Email{} = email) do
+    gmail_account = email.gmail_account
+
+    # Ensure we have a valid access token
+    gmail_account =
+      case Accounts.ensure_valid_token(gmail_account) do
+        {:ok, updated_account} -> updated_account
+        {:error, _} -> gmail_account
+      end
+
+    case GmailClient.trash_message(gmail_account.access_token, email.gmail_message_id) do
+      :ok ->
+        Logger.info(
+          "✓ Successfully moved email #{email.gmail_message_id} to trash in Gmail account #{gmail_account.email}"
+        )
+
+        :ok
+
+      {:error, :unauthorized} ->
+        Logger.error(
+          "✗ Unauthorized when trashing email #{email.gmail_message_id} from #{gmail_account.email}"
+        )
+
+        :error
+
+      {:error, error} ->
+        Logger.error(
+          "✗ Failed to trash email #{email.gmail_message_id} in Gmail: #{inspect(error)}"
+        )
+
+        :error
+    end
   end
 
   @doc """

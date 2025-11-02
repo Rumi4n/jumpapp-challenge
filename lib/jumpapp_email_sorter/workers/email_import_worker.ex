@@ -116,9 +116,7 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
 
           case GmailClient.archive_message(gmail_account.access_token, message.id) do
             :ok ->
-              Logger.info(
-                "✓ Successfully archived email #{message.id} in #{gmail_account.email}"
-              )
+              Logger.info("✓ Successfully archived email #{message.id} in #{gmail_account.email}")
 
               :ok
 

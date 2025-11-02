@@ -63,12 +63,31 @@ defmodule JumpappEmailSorter.AIService do
     2. Forms that need to be submitted
     3. Checkboxes that need to be toggled
 
-    Respond in JSON format with:
+    You MUST respond with ONLY valid JSON (no markdown, no explanation). Use this exact format:
     {
-      "method": "button_click" | "form_submit" | "link_follow",
+      "method": "button_click",
       "selector": "CSS selector or XPath",
-      "form_data": {"field": "value"} (if form_submit)
+      "form_data": {}
     }
+
+    OR for forms:
+    {
+      "method": "form_submit",
+      "selector": "form CSS selector",
+      "form_data": {"field_name": "value"}
+    }
+
+    OR if you cannot determine:
+    {
+      "method": "unknown",
+      "reason": "explanation"
+    }
+
+    Important:
+    - Return ONLY the JSON object, no markdown code blocks
+    - The "method" field is required
+    - For form_submit, try to identify form field names and values
+    - Look for hidden input fields, CSRF tokens, etc.
 
     HTML (truncated):
     #{truncate_content(html_content, 3000)}
@@ -181,13 +200,31 @@ defmodule JumpappEmailSorter.AIService do
   end
 
   defp parse_unsubscribe_response(response) do
-    # Try to parse JSON response
-    case Jason.decode(response) do
-      {:ok, data} ->
-        {:ok, data}
+    # Clean the response - AI often wraps JSON in markdown code blocks
+    cleaned_response =
+      response
+      |> String.trim()
+      # Remove markdown code blocks
+      |> String.replace(~r/^```json\s*/m, "")
+      |> String.replace(~r/^```\s*/m, "")
+      |> String.replace(~r/```\s*$/m, "")
+      |> String.trim()
 
-      {:error, _} ->
-        # If not valid JSON, try to extract information from text
+    # Try to parse JSON response
+    case Jason.decode(cleaned_response) do
+      {:ok, data} when is_map(data) ->
+        # Validate that it has the expected structure
+        if Map.has_key?(data, "method") do
+          {:ok, data}
+        else
+          Logger.warning("AI response missing 'method' field: #{inspect(data)}")
+          {:error, :invalid_structure}
+        end
+
+      {:error, error} ->
+        # If not valid JSON, try to extract JSON from text
+        Logger.warning("Failed to parse AI response as JSON: #{inspect(error)}")
+        Logger.debug("AI response was: #{cleaned_response}")
         {:error, :invalid_response}
     end
   end

@@ -92,9 +92,37 @@ defmodule JumpappEmailSorter.GmailClient do
         {:error, :unauthorized}
 
       {:ok, %{status: status, body: body}} ->
-        Logger.error(
-          "Gmail API error when archiving #{message_id}: #{status} - #{inspect(body)}"
-        )
+        Logger.error("Gmail API error when archiving #{message_id}: #{status} - #{inspect(body)}")
+
+        {:error, {:api_error, status, body}}
+
+      {:error, error} ->
+        Logger.error("Gmail API request failed for #{message_id}: #{inspect(error)}")
+        {:error, error}
+    end
+  end
+
+  @doc """
+  Moves a message to trash in Gmail.
+  This is safer than permanent deletion and works with gmail.modify scope.
+  Users can still recover emails from trash within 30 days.
+  """
+  def trash_message(access_token, message_id) do
+    url = "#{@gmail_api_base}/users/me/messages/#{message_id}/trash"
+
+    Logger.debug("Moving message #{message_id} to trash via Gmail API")
+
+    case Req.post(url, auth: {:bearer, access_token}, json: %{}) do
+      {:ok, %{status: 200}} ->
+        Logger.debug("Gmail API: Successfully trashed message #{message_id}")
+        :ok
+
+      {:ok, %{status: 401}} ->
+        Logger.error("Gmail API: Unauthorized (401) when trashing #{message_id}")
+        {:error, :unauthorized}
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.error("Gmail API error when trashing #{message_id}: #{status} - #{inspect(body)}")
 
         {:error, {:api_error, status, body}}
 

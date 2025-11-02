@@ -7,6 +7,9 @@ defmodule JumpappEmailSorter.Accounts do
   alias JumpappEmailSorter.Repo
 
   alias JumpappEmailSorter.Accounts.{User, GmailAccount}
+  alias JumpappEmailSorter.GmailClient
+
+  require Logger
 
   @doc """
   Gets a single user by ID.
@@ -128,5 +131,28 @@ defmodule JumpappEmailSorter.Accounts do
 
   def token_expired?(expires_at) do
     DateTime.compare(expires_at, DateTime.add(DateTime.utc_now(), 300, :second)) == :lt
+  end
+
+  @doc """
+  Ensures a gmail account has a valid access token, refreshing if necessary.
+  """
+  def ensure_valid_token(%GmailAccount{} = account) do
+    if token_expired?(account.token_expires_at) do
+      Logger.info("Refreshing token for account #{account.id}")
+
+      case GmailClient.refresh_access_token(account.refresh_token) do
+        {:ok, %{access_token: new_token, expires_at: expires_at}} ->
+          update_gmail_account_tokens(account, %{
+            access_token: new_token,
+            token_expires_at: expires_at
+          })
+
+        {:error, error} ->
+          Logger.error("Failed to refresh token for account #{account.id}: #{inspect(error)}")
+          {:error, error}
+      end
+    else
+      {:ok, account}
+    end
   end
 end
