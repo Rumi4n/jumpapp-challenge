@@ -33,6 +33,11 @@ if [ ! -f /app/bin/server ]; then
 fi
 
 echo "==> Server binary found"
+
+echo "==> Running database migrations..."
+/app/bin/jumpapp_email_sorter eval "JumpappEmailSorter.Release.migrate()"
+
+echo "==> Migrations complete"
 echo "==> Starting application..."
 
 # Execute the server
