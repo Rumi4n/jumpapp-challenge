@@ -93,7 +93,9 @@ COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/jumpapp_email
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /app/
-RUN chmod +x /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh && \
+    chmod +x /app/bin/server && \
+    chmod +x /app/bin/jumpapp_email_sorter
 
 USER nobody
 
