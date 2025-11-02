@@ -23,7 +23,7 @@ fi
 echo "==> Environment variables OK"
 echo "==> PHX_HOST: $PHX_HOST"
 echo "==> PORT: ${PORT:-4000}"
-echo "==> Database URL: ${DATABASE_URL:0:20}..." # Show only first 20 chars
+echo "==> Database URL: [REDACTED]"
 
 echo "==> Checking if server binary exists..."
 if [ ! -f /app/bin/server ]; then
