@@ -205,7 +205,7 @@ lib/
 
 ## Background Jobs
 
-- **GmailPollWorker** - Runs every 3 minutes to check for new emails across all accounts
+- **GmailPollWorker** - Runs every 1 minute to check for new emails across all accounts
 - **EmailImportWorker** - Fetches, categorizes, summarizes, and archives emails (only archives if successfully categorized)
 - **UnsubscribeWorker** - Processes unsubscribe requests
 
