@@ -36,12 +36,12 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorkerTest do
   end
 
   describe "perform/1" do
-    @tag :skip
+    @tag :integration
     test "successfully imports emails when unread messages exist", %{
       gmail_account: gmail_account
     } do
-      # This is an integration test that tests the worker logic
-      # In a real scenario, you'd mock GmailClient and AIService
+      # This is an integration test that tests the worker logic with real Gmail API
+      # Note: This will fail without valid Gmail credentials
 
       job_args = %{"gmail_account_id" => gmail_account.id}
 
@@ -53,7 +53,7 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorkerTest do
       assert result == :ok || match?({:error, _}, result)
     end
 
-    @tag :skip
+    @tag :integration
     test "handles case when no unread messages exist", %{gmail_account: gmail_account} do
       job_args = %{"gmail_account_id" => gmail_account.id}
 
@@ -90,7 +90,7 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorkerTest do
       assert found_email.subject == "Existing Email"
     end
 
-    @tag :skip
+    @tag :integration
     test "handles unauthorized error gracefully", %{gmail_account: gmail_account} do
       job_args = %{"gmail_account_id" => gmail_account.id}
 

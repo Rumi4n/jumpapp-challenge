@@ -63,21 +63,32 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
 
   @impl true
   def handle_event("delete_category", %{"id" => id}, socket) do
-    category = Categories.get_category!(id)
+    user_id = socket.assigns.current_user.id
+    
+    case Categories.get_category(id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Category not found")}
+      
+      category ->
+        # Verify the category belongs to the current user
+        if category.user_id != user_id do
+          {:noreply, put_flash(socket, :error, "You don't have permission to delete this category")}
+        else
+          case Categories.delete_category(category) do
+            {:ok, _} ->
+              categories = Categories.list_categories_with_counts(user_id)
 
-    case Categories.delete_category(category) do
-      {:ok, _} ->
-        categories = Categories.list_categories_with_counts(socket.assigns.current_user.id)
+              socket =
+                socket
+                |> assign(:categories, categories)
+                |> put_flash(:info, "Category deleted successfully!")
 
-        socket =
-          socket
-          |> assign(:categories, categories)
-          |> put_flash(:info, "Category deleted successfully!")
+              {:noreply, socket}
 
-        {:noreply, socket}
-
-      {:error, _} ->
-        {:noreply, put_flash(socket, :error, "Failed to delete category")}
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Failed to delete category")}
+          end
+        end
     end
   end
 

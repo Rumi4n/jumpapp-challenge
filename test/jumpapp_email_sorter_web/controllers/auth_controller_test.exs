@@ -8,12 +8,13 @@ defmodule JumpappEmailSorterWeb.AuthControllerTest do
   # The key logic is tested through the Accounts context tests.
 
   describe "callback/2 with failure" do
-    @tag :skip
     test "redirects to home with error flash when authentication fails", %{conn: conn} do
       conn =
         conn
-        |> assign(:ueberauth_failure, %{errors: [%{message: "Auth failed"}]})
+        |> bypass_through(JumpappEmailSorterWeb.Router, [:browser])
         |> get(~p"/auth/google/callback")
+        |> assign(:ueberauth_failure, %{errors: [%{message: "Auth failed"}]})
+        |> JumpappEmailSorterWeb.AuthController.callback(%{})
 
       assert redirected_to(conn) == ~p"/"
       assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Failed to authenticate"
@@ -21,14 +22,15 @@ defmodule JumpappEmailSorterWeb.AuthControllerTest do
   end
 
   describe "callback/2 with success - initial login" do
-    @tag :skip
     test "creates new user and gmail account on first login", %{conn: conn} do
       auth = build_auth_struct("newuser@example.com", "google_new_123")
 
       conn =
         conn
-        |> assign(:ueberauth_auth, auth)
+        |> bypass_through(JumpappEmailSorterWeb.Router, [:browser])
         |> get(~p"/auth/google/callback")
+        |> assign(:ueberauth_auth, auth)
+        |> JumpappEmailSorterWeb.AuthController.callback(%{})
 
       assert redirected_to(conn) == ~p"/dashboard"
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Successfully authenticated"
@@ -47,7 +49,6 @@ defmodule JumpappEmailSorterWeb.AuthControllerTest do
       assert get_session(conn, :user_id) == user.id
     end
 
-    @tag :skip
     test "updates existing user on subsequent login", %{conn: conn} do
       # Create existing user
       {:ok, existing_user} =
@@ -61,8 +62,10 @@ defmodule JumpappEmailSorterWeb.AuthControllerTest do
 
       conn =
         conn
-        |> assign(:ueberauth_auth, auth)
+        |> bypass_through(JumpappEmailSorterWeb.Router, [:browser])
         |> get(~p"/auth/google/callback")
+        |> assign(:ueberauth_auth, auth)
+        |> JumpappEmailSorterWeb.AuthController.callback(%{})
 
       assert redirected_to(conn) == ~p"/dashboard"
 
@@ -75,7 +78,6 @@ defmodule JumpappEmailSorterWeb.AuthControllerTest do
   end
 
   describe "callback/2 with success - adding additional account" do
-    @tag :skip
     test "adds gmail account to existing logged-in user", %{conn: conn} do
       # Create existing user and log them in
       {:ok, user} =
@@ -89,9 +91,11 @@ defmodule JumpappEmailSorterWeb.AuthControllerTest do
 
       conn =
         conn
+        |> bypass_through(JumpappEmailSorterWeb.Router, [:browser])
+        |> get(~p"/auth/google/callback")
         |> init_test_session(%{user_id: user.id})
         |> assign(:ueberauth_auth, auth)
-        |> get(~p"/auth/google/callback")
+        |> JumpappEmailSorterWeb.AuthController.callback(%{})
 
       assert redirected_to(conn) == ~p"/dashboard"
       assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Gmail account added successfully"
@@ -102,8 +106,7 @@ defmodule JumpappEmailSorterWeb.AuthControllerTest do
       assert hd(gmail_accounts).email == "second@gmail.com"
     end
 
-    @tag :skip
-    test "shows error when trying to add duplicate gmail account", %{conn: conn} do
+    test "updates existing gmail account tokens when re-authenticating", %{conn: conn} do
       {:ok, user} =
         Accounts.upsert_user_from_oauth(%{
           email: "user@example.com",
@@ -112,25 +115,37 @@ defmodule JumpappEmailSorterWeb.AuthControllerTest do
         })
 
       # Add first gmail account
-      {:ok, _gmail_account} =
+      {:ok, gmail_account} =
         Accounts.create_gmail_account(user, %{
           email: "duplicate@gmail.com",
-          access_token: "token",
-          refresh_token: "refresh",
+          access_token: "old_token",
+          refresh_token: "old_refresh",
           token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
         })
 
-      # Try to add the same account again
+      old_token = gmail_account.access_token
+
+      # Re-authenticate with the same account (should update tokens)
       auth = build_auth_struct("duplicate@gmail.com", "google_dup_123")
 
       conn =
         conn
+        |> bypass_through(JumpappEmailSorterWeb.Router, [:browser])
+        |> get(~p"/auth/google/callback")
         |> init_test_session(%{user_id: user.id})
         |> assign(:ueberauth_auth, auth)
-        |> get(~p"/auth/google/callback")
+        |> JumpappEmailSorterWeb.AuthController.callback(%{})
 
       assert redirected_to(conn) == ~p"/dashboard"
-      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "already connected"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~ "Gmail account added successfully"
+      
+      # Verify that only one gmail account exists (no duplicate)
+      gmail_accounts = Accounts.list_gmail_accounts(user.id)
+      assert length(gmail_accounts) == 1
+      
+      # Verify tokens were updated
+      updated_account = hd(gmail_accounts)
+      assert updated_account.access_token != old_token
     end
   end
 

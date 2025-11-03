@@ -166,15 +166,15 @@ defmodule JumpappEmailSorterWeb.DashboardLiveTest do
       assert length(categories) == 0
     end
 
-    @tag :skip
-    test "crashes when trying to delete non-existent category", %{conn: conn, user: user} do
+    test "shows error when trying to delete non-existent category", %{conn: conn, user: user} do
       conn = log_in_user(conn, user)
       {:ok, view, _html} = live(conn, ~p"/dashboard")
 
-      # Try to delete non-existent category - this will cause the LiveView to crash
-      # because get_category! raises an error
-      # Skipping this test as it's testing error behavior that should be handled gracefully
-      assert catch_exit(render_click(view, "delete_category", %{"id" => 999_999}))
+      # Try to delete non-existent category - should handle gracefully
+      html = render_click(view, "delete_category", %{"id" => 999_999})
+
+      # Should show error message and not crash
+      assert html =~ "Category not found"
     end
   end
 

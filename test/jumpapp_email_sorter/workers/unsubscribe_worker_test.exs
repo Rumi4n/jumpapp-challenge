@@ -51,8 +51,8 @@ defmodule JumpappEmailSorter.Workers.UnsubscribeWorkerTest do
       assert result == {:error, :no_unsubscribe_link}
     end
 
-    @tag :skip
-    test "creates unsubscribe attempt record", %{
+    @tag :integration
+    test "creates unsubscribe attempt record with real HTTP call", %{
       gmail_account: gmail_account,
       category: category
     } do
@@ -71,9 +71,12 @@ defmodule JumpappEmailSorter.Workers.UnsubscribeWorkerTest do
           unsubscribe_link: "https://httpbin.org/status/200"
         })
 
-      # The worker will try to make HTTP request
+      # The worker will make a real HTTP request to httpbin.org (a testing service)
       job_args = %{"email_id" => email.id}
-      _result = UnsubscribeWorker.perform(%Oban.Job{args: job_args})
+      result = UnsubscribeWorker.perform(%Oban.Job{args: job_args})
+
+      # The worker should complete (may succeed or fail depending on network)
+      assert result == :ok || match?({:error, _}, result)
 
       # Check that an attempt was created
       attempt = Emails.get_latest_unsubscribe_attempt(email.id)

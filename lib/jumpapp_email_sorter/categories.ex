@@ -38,6 +38,11 @@ defmodule JumpappEmailSorter.Categories do
   def get_category!(id), do: Repo.get!(Category, id)
 
   @doc """
+  Gets a category by id, returns nil if not found.
+  """
+  def get_category(id), do: Repo.get(Category, id)
+
+  @doc """
   Gets a category by user_id and category_id.
   """
   def get_user_category(user_id, category_id) do
