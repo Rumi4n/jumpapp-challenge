@@ -5,7 +5,7 @@ An intelligent email management application that automatically categorizes and s
 ## Features
 
 - 🔐 **Google OAuth Authentication** - Secure sign-in with Gmail
-- 🤖 **AI-Powered Categorization** - Automatically sorts emails into custom categories using Anthropic Claude
+- 🤖 **AI-Powered Categorization** - Automatically sorts emails into custom categories using Google Gemini
 - 📝 **Email Summarization** - AI-generated summaries for quick email scanning
 - 📧 **Multi-Account Support** - Connect and manage multiple Gmail accounts
 - 🗂️ **Custom Categories** - Create categories with descriptions to guide AI sorting
@@ -18,7 +18,7 @@ An intelligent email management application that automatically categorizes and s
 
 - **Backend**: Elixir + Phoenix 1.8 + LiveView
 - **Database**: PostgreSQL
-- **AI**: Anthropic Claude (Haiku model for cost efficiency)
+- **AI**: Google Gemini (Flash model for speed and efficiency)
 - **OAuth**: Google OAuth 2.0 with Gmail API
 - **Background Jobs**: Oban
 - **HTTP Client**: Req
@@ -30,7 +30,7 @@ An intelligent email management application that automatically categorizes and s
 - PostgreSQL 14+
 - Node.js 18+ (for asset compilation)
 - Google Cloud Project with Gmail API enabled
-- Anthropic API key
+- Google Gemini API key
 
 ## Setup Instructions
 
@@ -58,6 +58,8 @@ cd assets && npm install && cd ..
 6. Add authorized redirect URI: `http://localhost:4000/auth/google/callback`
 7. Copy the Client ID and Client Secret
 
+**For detailed instructions, see `docs/GOOGLE_OAUTH_SETUP.md`**
+
 ### 4. Get Google Gemini API Key
 
 1. Go to [Google AI Studio](https://aistudio.google.com)
@@ -65,6 +67,8 @@ cd assets && npm install && cd ..
 3. Click "Create API Key" 
 4. Select a Google Cloud project (or create a new one)
 5. Copy the API key
+
+**For detailed instructions, see `docs/GEMINI_SETUP_GUIDE.md`**
 
 ### 5. Configure Environment Variables
 
@@ -208,7 +212,7 @@ lib/
 ## API Rate Limits
 
 - Gmail API: 250 quota units per user per second
-- Anthropic API: Depends on your tier (free tier has limits)
+- Google Gemini API: 15 requests per minute, 1,500 requests per day (free tier)
 
 The app handles rate limiting gracefully with retries and exponential backoff.
 
@@ -261,7 +265,7 @@ fly launch
 ```bash
 fly secrets set GOOGLE_CLIENT_ID="your_client_id"
 fly secrets set GOOGLE_CLIENT_SECRET="your_client_secret"
-fly secrets set ANTHROPIC_API_KEY="your_api_key"
+fly secrets set GOOGLE_GEMINI_API_KEY="your_api_key"
 ```
 
 ### 5. Update OAuth Redirect URI
@@ -292,7 +296,7 @@ Since this app requires Gmail API scopes, it needs to be in "Testing" mode in Go
 Make sure all environment variables are set in production:
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
-- `ANTHROPIC_API_KEY`
+- `GOOGLE_GEMINI_API_KEY`
 - `SECRET_KEY_BASE` (generated automatically by Fly.io)
 - `DATABASE_URL` (provided by Fly.io PostgreSQL)
 
@@ -306,15 +310,17 @@ Make sure all environment variables are set in production:
 
 ### AI Categorization Not Working
 
-- Verify `ANTHROPIC_API_KEY` is set correctly
-- Check API usage limits
+- Verify `GOOGLE_GEMINI_API_KEY` is set correctly
+- Check API usage limits (15 RPM, 1,500 RPD on free tier)
 - Review logs for AI service errors
+- See `docs/GEMINI_SETUP_GUIDE.md` for detailed setup instructions
 
 ### Database Connection Issues
 
 - Ensure PostgreSQL is running
 - Verify database credentials in `config/dev.exs`
 - Check that database exists: `mix ecto.create`
+- See `docs/DATABASE_SETUP.md` for detailed troubleshooting
 
 ## License
 

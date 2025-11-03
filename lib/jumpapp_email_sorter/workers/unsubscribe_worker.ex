@@ -86,6 +86,16 @@ defmodule JumpappEmailSorter.Workers.UnsubscribeWorker do
         # Redirect might mean success
         {:ok, "redirect"}
 
+      {:ok, %{status: status}} when status >= 500 ->
+        # Server error - cannot complete unsubscribe
+        Logger.warning("Server error (#{status}) when accessing unsubscribe URL: #{url}")
+        {:error, :server_error}
+
+      {:ok, %{status: status}} when status >= 400 ->
+        # Client error
+        Logger.warning("Client error (#{status}) when accessing unsubscribe URL: #{url}")
+        {:error, :client_error}
+
       {:error, error} ->
         {:error, error}
     end

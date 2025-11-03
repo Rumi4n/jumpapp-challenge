@@ -1,8 +1,15 @@
 defmodule JumpappEmailSorter.Workers.EmailImportWorkerTest do
   use JumpappEmailSorter.DataCase, async: false
 
+  import Mox
+
   alias JumpappEmailSorter.Workers.EmailImportWorker
   alias JumpappEmailSorter.{Accounts, Categories, Emails}
+  alias JumpappEmailSorter.GmailClientMock
+
+  # Set up Mox
+  setup :verify_on_exit!
+  setup :set_mox_global
 
   setup do
     {:ok, user} =
@@ -36,32 +43,32 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorkerTest do
   end
 
   describe "perform/1" do
-    @tag :integration
     test "successfully imports emails when unread messages exist", %{
       gmail_account: gmail_account
     } do
-      # This is an integration test that tests the worker logic with real Gmail API
-      # Note: This will fail without valid Gmail credentials
+      # Mock Gmail API to return empty list (no messages)
+      expect(GmailClientMock, :list_messages, fn _token, _opts ->
+        {:ok, %{}}
+      end)
 
       job_args = %{"gmail_account_id" => gmail_account.id}
-
-      # For now, we test that the worker can be invoked without crashing
-      # when there are no messages (empty response from Gmail)
       result = EmailImportWorker.perform(%Oban.Job{args: job_args})
 
       # The worker should handle the case gracefully
-      assert result == :ok || match?({:error, _}, result)
+      assert result == :ok
     end
 
-    @tag :integration
     test "handles case when no unread messages exist", %{gmail_account: gmail_account} do
-      job_args = %{"gmail_account_id" => gmail_account.id}
+      # Mock Gmail API to return empty list
+      expect(GmailClientMock, :list_messages, fn _token, _opts ->
+        {:ok, %{}}
+      end)
 
-      # Test that worker handles empty message list
+      job_args = %{"gmail_account_id" => gmail_account.id}
       result = EmailImportWorker.perform(%Oban.Job{args: job_args})
 
       # Should complete successfully even with no messages
-      assert result == :ok || match?({:error, _}, result)
+      assert result == :ok
     end
 
     test "skips already imported emails", %{gmail_account: gmail_account} do
@@ -90,15 +97,17 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorkerTest do
       assert found_email.subject == "Existing Email"
     end
 
-    @tag :integration
     test "handles unauthorized error gracefully", %{gmail_account: gmail_account} do
-      job_args = %{"gmail_account_id" => gmail_account.id}
+      # Mock Gmail API to return unauthorized error
+      expect(GmailClientMock, :list_messages, fn _token, _opts ->
+        {:error, :unauthorized}
+      end)
 
-      # The worker should handle API errors gracefully
+      job_args = %{"gmail_account_id" => gmail_account.id}
       result = EmailImportWorker.perform(%Oban.Job{args: job_args})
 
-      # Should return error tuple or ok
-      assert result == :ok || match?({:error, _}, result)
+      # Should return error tuple
+      assert result == {:error, :unauthorized}
     end
   end
 

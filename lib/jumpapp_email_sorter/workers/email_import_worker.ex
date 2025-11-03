@@ -73,75 +73,77 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorker do
     Body: #{message.body}
     """
 
-    # Categorize with AI
-    {:ok, category_id} = ai_service().categorize_email(email_content, categories)
+    # Use 'with' for proper error handling
+    with {:ok, category_id} <- ai_service().categorize_email(email_content, categories),
+         {:ok, summary} <- ai_service().summarize_email(email_content) do
+      # Extract unsubscribe link
+      unsubscribe_link = extract_unsubscribe_link(message.body, message.list_unsubscribe)
 
-    # Summarize with AI
-    {:ok, summary} = ai_service().summarize_email(email_content)
+      # Parse date
+      received_at = parse_date(message.date)
 
-    # Extract unsubscribe link
-    unsubscribe_link = extract_unsubscribe_link(message.body, message.list_unsubscribe)
+      # Save to database
+      email_attrs = %{
+        gmail_account_id: gmail_account.id,
+        category_id: category_id,
+        gmail_message_id: message.id,
+        thread_id: message.thread_id,
+        subject: message.subject,
+        from_email: message.from.email,
+        from_name: message.from.name,
+        received_at: received_at,
+        summary: summary,
+        body_preview: String.slice(message.body, 0, 500),
+        body_text: message.body,
+        list_unsubscribe_header: message.list_unsubscribe,
+        unsubscribe_link: unsubscribe_link
+      }
 
-    # Parse date
-    received_at = parse_date(message.date)
-
-    # Save to database
-    email_attrs = %{
-      gmail_account_id: gmail_account.id,
-      category_id: category_id,
-      gmail_message_id: message.id,
-      thread_id: message.thread_id,
-      subject: message.subject,
-      from_email: message.from.email,
-      from_name: message.from.name,
-      received_at: received_at,
-      summary: summary,
-      body_preview: String.slice(message.body, 0, 500),
-      body_text: message.body,
-      list_unsubscribe_header: message.list_unsubscribe,
-      unsubscribe_link: unsubscribe_link
-    }
-
-    case Emails.create_email(email_attrs) do
-      {:ok, email} ->
-        # Broadcast email update to LiveViews
-        Phoenix.PubSub.broadcast(
-          JumpappEmailSorter.PubSub,
-          "user:#{gmail_account.user_id}",
-          {:email_imported, email}
-        )
-
-        # Only archive the email in Gmail if it was successfully categorized
-        # Uncategorized emails stay in inbox for manual handling
-        if email.category_id do
-          Logger.info(
-            "Attempting to archive email #{message.id} from account #{gmail_account.email} (category: #{email.category_id})"
+      case Emails.create_email(email_attrs) do
+        {:ok, email} ->
+          # Broadcast email update to LiveViews
+          Phoenix.PubSub.broadcast(
+            JumpappEmailSorter.PubSub,
+            "user:#{gmail_account.user_id}",
+            {:email_imported, email}
           )
 
-          case gmail_client().archive_message(gmail_account.access_token, message.id) do
-            :ok ->
-              Logger.info("✓ Successfully archived email #{message.id} in #{gmail_account.email}")
+          # Only archive the email in Gmail if it was successfully categorized
+          # Uncategorized emails stay in inbox for manual handling
+          if email.category_id do
+            Logger.info(
+              "Attempting to archive email #{message.id} from account #{gmail_account.email} (category: #{email.category_id})"
+            )
 
-              :ok
+            case gmail_client().archive_message(gmail_account.access_token, message.id) do
+              :ok ->
+                Logger.info("✓ Successfully archived email #{message.id} in #{gmail_account.email}")
 
-            {:error, error} ->
-              Logger.error(
-                "✗ Failed to archive email #{message.id} in #{gmail_account.email}: #{inspect(error)}"
-              )
+                :ok
 
-              # Still consider import successful
-              :ok
+              {:error, error} ->
+                Logger.error(
+                  "✗ Failed to archive email #{message.id} in #{gmail_account.email}: #{inspect(error)}"
+                )
+
+                # Still consider import successful
+                :ok
+            end
+          else
+            Logger.info(
+              "Email #{message.id} from #{gmail_account.email} not categorized - leaving in inbox"
+            )
+
+            :ok
           end
-        else
-          Logger.info(
-            "Email #{message.id} from #{gmail_account.email} not categorized - leaving in inbox"
-          )
 
-          :ok
-        end
-
-      {:error, changeset} ->
-        Logger.error("Failed to save email #{message.id}: #{inspect(changeset.errors)}")
+        {:error, changeset} ->
+          Logger.error("Failed to save email #{message.id}: #{inspect(changeset.errors)}")
+          :error
+      end
+    else
+      {:error, reason} ->
+        Logger.error("Failed to process email #{message.id} with AI: #{inspect(reason)}")
         :error
     end
   end
