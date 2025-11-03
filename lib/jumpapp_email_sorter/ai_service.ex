@@ -48,10 +48,15 @@ defmodule JumpappEmailSorter.AIService do
       {:ok, response} ->
         {:ok, String.trim(response)}
 
+      {:error, {:api_error, 429, _body}} ->
+        Logger.warning("AI quota exceeded - using fallback summary")
+        # Return error so caller can handle it with proper fallback
+        {:error, :quota_exceeded}
+
       {:error, error} ->
         Logger.error("AI summarization failed: #{inspect(error)}")
-        # Fallback to simple preview
-        {:ok, extract_preview(email_content)}
+        # Return error so caller can handle it with proper fallback
+        {:error, error}
     end
   end
 
@@ -328,11 +333,5 @@ defmodule JumpappEmailSorter.AIService do
     else
       content
     end
-  end
-
-  defp extract_preview(content) do
-    content
-    |> String.slice(0, 200)
-    |> String.trim()
   end
 end

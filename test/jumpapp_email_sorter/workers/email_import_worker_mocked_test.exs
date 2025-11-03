@@ -397,6 +397,106 @@ defmodule JumpappEmailSorter.Workers.EmailImportWorkerMockedTest do
       assert length(emails) == 1
       assert hd(emails).gmail_message_id == "msg_456"
     end
+
+    test "handles AI quota exceeded with fallback summary", %{
+      gmail_account: gmail_account,
+      categories: _categories
+    } do
+      # Mock Gmail API
+      expect(GmailClientMock, :list_messages, fn _token, _opts ->
+        {:ok, %{"messages" => [%{"id" => "msg_123"}]}}
+      end)
+
+      expect(GmailClientMock, :get_message, fn _token, "msg_123" ->
+        {:ok,
+         %{
+           id: "msg_123",
+           thread_id: "thread_456",
+           subject: "Important Newsletter from Company XYZ",
+           from: %{name: "Company XYZ", email: "newsletter@company.com"},
+           body: "This is a very important newsletter with lots of content...",
+           date: "2024-01-15T10:30:00Z",
+           list_unsubscribe: "<https://company.com/unsubscribe>"
+         }}
+      end)
+
+      # Mock AI to return quota exceeded error
+      expect(AIServiceMock, :categorize_email, fn _content, _categories ->
+        {:error, :quota_exceeded}
+      end)
+
+      expect(AIServiceMock, :summarize_email, fn _content ->
+        {:error, :quota_exceeded}
+      end)
+
+      # Perform the import
+      job_args = %{"gmail_account_id" => gmail_account.id}
+      result = EmailImportWorker.perform(%Oban.Job{args: job_args})
+
+      # Should still succeed with fallback
+      assert result == :ok
+
+      # Verify email was saved with fallback summary
+      emails = Emails.list_emails_by_account(gmail_account.id)
+      assert length(emails) == 1
+
+      email = hd(emails)
+      assert email.gmail_message_id == "msg_123"
+      assert email.category_id == nil
+      # Should have fallback summary containing the subject
+      assert String.contains?(email.summary, "Important Newsletter")
+      # Should not archive since not categorized
+    end
+
+    test "handles AI general error with fallback summary", %{
+      gmail_account: gmail_account,
+      categories: _categories
+    } do
+      # Mock Gmail API
+      expect(GmailClientMock, :list_messages, fn _token, _opts ->
+        {:ok, %{"messages" => [%{"id" => "msg_789"}]}}
+      end)
+
+      expect(GmailClientMock, :get_message, fn _token, "msg_789" ->
+        {:ok,
+         %{
+           id: "msg_789",
+           thread_id: "thread_789",
+           subject: "Short",
+           from: %{name: "Sender", email: "sender@example.com"},
+           body: "This is a short email body that should be included in the fallback summary.",
+           date: "2024-01-15T10:30:00Z",
+           list_unsubscribe: nil
+         }}
+      end)
+
+      # Mock AI to return general error
+      expect(AIServiceMock, :categorize_email, fn _content, _categories ->
+        {:error, :timeout}
+      end)
+
+      expect(AIServiceMock, :summarize_email, fn _content ->
+        {:error, :api_error}
+      end)
+
+      # Perform the import
+      job_args = %{"gmail_account_id" => gmail_account.id}
+      result = EmailImportWorker.perform(%Oban.Job{args: job_args})
+
+      # Should still succeed with fallback
+      assert result == :ok
+
+      # Verify email was saved with fallback summary
+      emails = Emails.list_emails_by_account(gmail_account.id)
+      assert length(emails) == 1
+
+      email = hd(emails)
+      assert email.gmail_message_id == "msg_789"
+      assert email.category_id == nil
+      # Short subject should include body snippet
+      assert String.contains?(email.summary, "Short")
+      assert String.contains?(email.summary, "short email body")
+    end
   end
 end
 

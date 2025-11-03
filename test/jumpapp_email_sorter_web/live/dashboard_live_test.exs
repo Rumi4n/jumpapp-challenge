@@ -294,14 +294,123 @@ defmodule JumpappEmailSorterWeb.DashboardLiveTest do
     end
   end
 
-  describe "logout button" do
-    test "displays logout button on dashboard", %{conn: conn, user: user} do
+  describe "main account and logout" do
+    test "displays Sign Out button for main account and Main Account badge", %{
+      conn: conn,
+      user: user
+    } do
+      # Create the main account (matching user's email)
+      {:ok, _main_account} =
+        Accounts.create_gmail_account(user, %{
+          email: user.email,
+          access_token: "token",
+          refresh_token: "refresh",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
       conn = log_in_user(conn, user)
       {:ok, _view, html} = live(conn, ~p"/dashboard")
 
-      # Check that logout button is present
+      # Check that main account has Sign Out button and badge
       assert html =~ "Sign Out"
+      assert html =~ "Main Account"
       assert html =~ "/auth/logout"
+    end
+
+    test "displays Remove button for additional accounts only", %{conn: conn, user: user} do
+      # Create main account
+      {:ok, _main_account} =
+        Accounts.create_gmail_account(user, %{
+          email: user.email,
+          access_token: "token",
+          refresh_token: "refresh",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
+      # Create additional account
+      {:ok, _additional_account} =
+        Accounts.create_gmail_account(user, %{
+          email: "additional@gmail.com",
+          access_token: "token2",
+          refresh_token: "refresh2",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
+      conn = log_in_user(conn, user)
+      {:ok, _view, html} = live(conn, ~p"/dashboard")
+
+      # Main account should have Sign Out
+      assert html =~ "Sign Out"
+      # Additional account should have Remove
+      assert html =~ "Remove"
+      # Should show both accounts
+      assert html =~ user.email
+      assert html =~ "additional@gmail.com"
+    end
+
+    test "prevents deletion of main account", %{conn: conn, user: user} do
+      {:ok, main_account} =
+        Accounts.create_gmail_account(user, %{
+          email: user.email,
+          access_token: "token",
+          refresh_token: "refresh",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
+      conn = log_in_user(conn, user)
+      {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+      # Try to delete main account
+      html = render_click(view, "delete_gmail_account", %{"id" => main_account.id})
+
+      # Should show error message
+      assert html =~ "Cannot remove main account" or html =~ "Use Sign Out instead"
+
+      # Verify account still exists
+      gmail_accounts = Accounts.list_gmail_accounts(user.id)
+      assert length(gmail_accounts) == 1
+    end
+
+    test "main account is always displayed first in the list", %{conn: conn, user: user} do
+      # Create additional account first (to test sorting, not insertion order)
+      {:ok, _additional1} =
+        Accounts.create_gmail_account(user, %{
+          email: "additional1@gmail.com",
+          access_token: "token1",
+          refresh_token: "refresh1",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
+      # Create main account second
+      {:ok, _main_account} =
+        Accounts.create_gmail_account(user, %{
+          email: user.email,
+          access_token: "token",
+          refresh_token: "refresh",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
+      # Create another additional account last
+      {:ok, _additional2} =
+        Accounts.create_gmail_account(user, %{
+          email: "additional2@gmail.com",
+          access_token: "token2",
+          refresh_token: "refresh2",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
+      conn = log_in_user(conn, user)
+      {:ok, _view, html} = live(conn, ~p"/dashboard")
+
+      # Extract the order of emails in the HTML
+      # Main account should appear before additional accounts
+      main_pos = :binary.match(html, user.email) |> elem(0)
+      additional1_pos = :binary.match(html, "additional1@gmail.com") |> elem(0)
+      additional2_pos = :binary.match(html, "additional2@gmail.com") |> elem(0)
+
+      # Main account should be first
+      assert main_pos < additional1_pos
+      assert main_pos < additional2_pos
     end
   end
 

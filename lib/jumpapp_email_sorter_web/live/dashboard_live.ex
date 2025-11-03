@@ -14,7 +14,10 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
 
     # Load data
     categories = Categories.list_categories_with_counts(user.id)
-    gmail_accounts = Accounts.list_gmail_accounts(user.id)
+    gmail_accounts = 
+      user.id
+      |> Accounts.list_gmail_accounts()
+      |> sort_accounts_with_main_first(user.email)
 
     socket =
       socket
@@ -94,7 +97,8 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
 
   @impl true
   def handle_event("delete_gmail_account", %{"id" => id}, socket) do
-    user_id = socket.assigns.current_user.id
+    user = socket.assigns.current_user
+    user_id = user.id
     
     # Convert string id to integer if needed
     account_id = if is_binary(id), do: String.to_integer(id), else: id
@@ -103,24 +107,34 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
     try do
       account = Accounts.get_gmail_account!(account_id)
       
-      # Verify the account belongs to the current user
-      if account.user_id != user_id do
-        {:noreply, put_flash(socket, :error, "You don't have permission to delete this account")}
-      else
-        case Accounts.delete_gmail_account(account) do
-          {:ok, _} ->
-            gmail_accounts = Accounts.list_gmail_accounts(user_id)
+      cond do
+        # Verify the account belongs to the current user
+        account.user_id != user_id ->
+          {:noreply, put_flash(socket, :error, "You don't have permission to delete this account")}
+        
+        # Prevent deletion of main account
+        account.email == user.email ->
+          {:noreply, put_flash(socket, :error, "Cannot remove main account. Use Sign Out instead.")}
+        
+        # Delete the additional account
+        true ->
+          case Accounts.delete_gmail_account(account) do
+            {:ok, _} ->
+              gmail_accounts = 
+                user_id
+                |> Accounts.list_gmail_accounts()
+                |> sort_accounts_with_main_first(user.email)
 
-            socket =
-              socket
-              |> assign(:gmail_accounts, gmail_accounts)
-              |> put_flash(:info, "Gmail account removed successfully!")
+              socket =
+                socket
+                |> assign(:gmail_accounts, gmail_accounts)
+                |> put_flash(:info, "Gmail account removed successfully!")
 
-            {:noreply, socket}
+              {:noreply, socket}
 
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, "Failed to remove account")}
-        end
+            {:error, _} ->
+              {:noreply, put_flash(socket, :error, "Failed to remove account")}
+          end
       end
     rescue
       Ecto.NoResultsError ->
@@ -135,6 +149,13 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
     {:noreply, assign(socket, :categories, categories)}
   end
 
+  # Helper function to sort accounts with main account first
+  defp sort_accounts_with_main_first(accounts, main_email) do
+    Enum.sort_by(accounts, fn account ->
+      if account.email == main_email, do: 0, else: 1
+    end)
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -142,23 +163,10 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
       <div class="min-h-screen bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <%!-- Header --%>
-          <div class="mb-8 flex items-center justify-between">
-            <div>
-              <h1 class="text-3xl font-bold text-gray-900">Email Dashboard</h1>
+          <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Email Dashboard</h1>
 
-              <p class="mt-2 text-gray-600">Manage your email categories and accounts</p>
-            </div>
-
-            <form action="/auth/logout" method="post">
-              <input type="hidden" name="_csrf_token" value={Phoenix.Controller.get_csrf_token()} />
-              <input type="hidden" name="_method" value="delete" />
-              <button
-                type="submit"
-                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Sign Out
-              </button>
-            </form>
+            <p class="mt-2 text-gray-600">Manage your email categories and accounts</p>
           </div>
           <%!-- Gmail Accounts Section --%>
           <div class="bg-white rounded-lg shadow p-6 mb-8">
@@ -187,23 +195,47 @@ defmodule JumpappEmailSorterWeb.DashboardLive do
                       </div>
 
                       <div>
-                        <p class="font-medium text-gray-900">{account.email}</p>
+                        <p class="font-medium text-gray-900">
+                          {account.email}
+                          <%= if account.email == @current_user.email do %>
+                            <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              Main Account
+                            </span>
+                          <% end %>
+                        </p>
 
                         <p class="text-sm text-gray-500">
                           Connected {Calendar.strftime(account.inserted_at, "%B %d, %Y")}
                         </p>
                       </div>
                     </div>
-
-                    <button
-                      phx-click="delete_gmail_account"
-                      phx-value-id={account.id}
-                      data-confirm="Are you sure you want to remove this Gmail account?"
-                      class="px-3 py-1.5 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-                      onclick="event.preventDefault(); event.stopPropagation(); if(confirm('Are you sure you want to remove this account? Emails from this account will remain in the database.')) { this.dispatchEvent(new Event('click', {bubbles: true})); }"
-                    >
-                      Remove
-                    </button>
+                    <%= if account.email == @current_user.email do %>
+                      <%!-- Main account: Show Sign Out button --%>
+                      <form action="/auth/logout" method="post">
+                        <input
+                          type="hidden"
+                          name="_csrf_token"
+                          value={Phoenix.Controller.get_csrf_token()}
+                        />
+                        <input type="hidden" name="_method" value="delete" />
+                        <button
+                          type="submit"
+                          class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          Sign Out
+                        </button>
+                      </form>
+                    <% else %>
+                      <%!-- Additional account: Show Remove button --%>
+                      <button
+                        phx-click="delete_gmail_account"
+                        phx-value-id={account.id}
+                        data-confirm="Are you sure you want to remove this Gmail account? Emails from this account will remain in the database."
+                        class="px-3 py-1.5 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+                      >
+                        Remove
+                      </button>
+                    <% end %>
                   </div>
                 <% end %>
               </div>
