@@ -82,8 +82,8 @@ config :jumpapp_email_sorter, Oban,
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
     {Oban.Plugins.Cron,
      crontab: [
-       # Poll for new emails every 3 minutes
-       {"*/3 * * * *", JumpappEmailSorter.Workers.GmailPollWorker}
+       # Poll for new emails every 1 minute
+       {"* * * * *", JumpappEmailSorter.Workers.GmailPollWorker}
      ]}
   ],
   queues: [default: 10, email_import: 5, unsubscribe: [limit: 1, paused: false]]

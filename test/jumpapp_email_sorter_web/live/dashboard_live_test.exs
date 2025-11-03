@@ -178,6 +178,78 @@ defmodule JumpappEmailSorterWeb.DashboardLiveTest do
     end
   end
 
+  describe "delete_gmail_account event" do
+    test "deletes a gmail account", %{conn: conn, user: user} do
+      {:ok, gmail_account} =
+        Accounts.create_gmail_account(user, %{
+          email: "test@gmail.com",
+          access_token: "token",
+          refresh_token: "refresh",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
+      conn = log_in_user(conn, user)
+      {:ok, view, html} = live(conn, ~p"/dashboard")
+
+      # Account should be visible
+      assert html =~ "test@gmail.com"
+
+      # Delete account
+      html = render_click(view, "delete_gmail_account", %{"id" => gmail_account.id})
+
+      # Account should be gone
+      refute html =~ "test@gmail.com"
+      assert html =~ "Gmail account removed successfully"
+
+      # Verify in database
+      gmail_accounts = Accounts.list_gmail_accounts(user.id)
+      assert length(gmail_accounts) == 0
+    end
+
+    test "shows error when trying to delete non-existent account", %{conn: conn, user: user} do
+      conn = log_in_user(conn, user)
+      {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+      # Try to delete non-existent account - should handle gracefully
+      html = render_click(view, "delete_gmail_account", %{"id" => 999_999})
+
+      # Should show error message and not crash
+      assert html =~ "Account not found"
+    end
+
+    test "prevents deleting another user's gmail account", %{conn: conn, user: user} do
+      # Create another user and their gmail account
+      {:ok, other_user} =
+        Accounts.upsert_user_from_oauth(%{
+          email: "other@example.com",
+          google_id: "google_#{:rand.uniform(100_000)}",
+          name: "Other User"
+        })
+
+      {:ok, other_account} =
+        Accounts.create_gmail_account(other_user, %{
+          email: "other@gmail.com",
+          access_token: "token",
+          refresh_token: "refresh",
+          token_expires_at: DateTime.add(DateTime.utc_now(), 3600, :second)
+        })
+
+      conn = log_in_user(conn, user)
+      {:ok, view, _html} = live(conn, ~p"/dashboard")
+
+      # Try to delete other user's account
+      html = render_click(view, "delete_gmail_account", %{"id" => other_account.id})
+
+      # Should show permission error (check for HTML encoded version)
+      assert html =~ "You don&#39;t have permission to delete this account" or
+               html =~ "You don't have permission to delete this account"
+
+      # Verify account still exists
+      gmail_accounts = Accounts.list_gmail_accounts(other_user.id)
+      assert length(gmail_accounts) == 1
+    end
+  end
+
   describe "email_imported pubsub message" do
     test "updates category counts when email is imported", %{conn: conn, user: user} do
       {:ok, category} = Categories.create_category(user.id, %{name: "Work"})
@@ -219,6 +291,17 @@ defmodule JumpappEmailSorterWeb.DashboardLiveTest do
 
       # Should now show 1 email
       assert html =~ "1 email"
+    end
+  end
+
+  describe "logout button" do
+    test "displays logout button on dashboard", %{conn: conn, user: user} do
+      conn = log_in_user(conn, user)
+      {:ok, _view, html} = live(conn, ~p"/dashboard")
+
+      # Check that logout button is present
+      assert html =~ "Sign Out"
+      assert html =~ "/auth/logout"
     end
   end
 
