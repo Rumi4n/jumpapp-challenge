@@ -56,7 +56,73 @@ defmodule JumpappEmailSorter.AIService do
   end
 
   @doc """
+  Analyzes form structure from FormAnalyzer and determines how to fill it for unsubscribe.
+  This is the new AI agent approach that uses structured form data.
+  """
+  def analyze_form_structure(form_analysis) do
+    simplified = JumpappEmailSorter.FormAnalyzer.simplify_for_ai(form_analysis)
+
+    prompt = """
+    You are an AI agent helping to unsubscribe from emails. Analyze this form structure and determine how to complete the unsubscribe process.
+
+    Form Structure:
+    #{Jason.encode!(simplified, pretty: true)}
+
+    You MUST respond with ONLY valid JSON (no markdown, no explanation). Use this format:
+
+    {
+      "strategy": "form_submit" | "button_click" | "link_click" | "unknown",
+      "form_index": 0,
+      "fields": [
+        {
+          "selector": "input[name='email']",
+          "value": "user@example.com",
+          "reason": "Email field for confirmation"
+        }
+      ],
+      "selects": [
+        {
+          "selector": "select[name='reason']",
+          "value": "no_longer_interested",
+          "reason": "Unsubscribe reason dropdown"
+        }
+      ],
+      "checkboxes": [
+        {
+          "selector": "input[name='confirm']",
+          "checked": true,
+          "reason": "Confirmation checkbox"
+        }
+      ],
+      "submit_selector": "button[type='submit']",
+      "confidence": "high" | "medium" | "low"
+    }
+
+    Guidelines:
+    - For email fields, use a generic test email like "user@example.com"
+    - For name fields, use "User" or leave empty if optional
+    - For reason dropdowns, select options like "no longer interested", "too many emails", or the first option
+    - Check any confirmation checkboxes
+    - If there are multiple forms, choose the one most likely for unsubscribing
+    - If you see standalone unsubscribe buttons/links, use button_click or link_click strategy
+    - Set confidence based on how clear the unsubscribe process is
+
+    Return ONLY the JSON, no explanation.
+    """
+
+    case call_gemini(prompt) do
+      {:ok, response} ->
+        parse_form_analysis_response(response)
+
+      {:error, error} ->
+        Logger.error("AI form analysis failed: #{inspect(error)}")
+        {:error, :analysis_failed}
+    end
+  end
+
+  @doc """
   Analyzes an unsubscribe page and attempts to identify the unsubscribe action.
+  This is the legacy approach for simple pages without form parsing.
   """
   def analyze_unsubscribe_page(_url, html_content) do
     prompt = """
@@ -202,15 +268,7 @@ defmodule JumpappEmailSorter.AIService do
   end
 
   defp parse_unsubscribe_response(response) when is_binary(response) do
-    # Clean the response - AI often wraps JSON in markdown code blocks
-    cleaned_response =
-      response
-      |> String.trim()
-      # Remove markdown code blocks
-      |> String.replace(~r/^```json\s*/m, "")
-      |> String.replace(~r/^```\s*/m, "")
-      |> String.replace(~r/```\s*$/m, "")
-      |> String.trim()
+    cleaned_response = clean_json_response(response)
 
     # Try to parse JSON response
     case Jason.decode(cleaned_response) do
@@ -232,6 +290,37 @@ defmodule JumpappEmailSorter.AIService do
   end
 
   defp parse_unsubscribe_response(nil), do: {:ok, %{"has_form" => false, "fields" => []}}
+
+  defp parse_form_analysis_response(response) when is_binary(response) do
+    cleaned_response = clean_json_response(response)
+
+    case Jason.decode(cleaned_response) do
+      {:ok, data} when is_map(data) ->
+        # Validate that it has the expected structure
+        if Map.has_key?(data, "strategy") do
+          {:ok, data}
+        else
+          Logger.warning("AI response missing 'strategy' field: #{inspect(data)}")
+          {:error, :invalid_structure}
+        end
+
+      {:error, error} ->
+        Logger.warning("Failed to parse AI form analysis as JSON: #{inspect(error)}")
+        Logger.debug("AI response was: #{cleaned_response}")
+        {:error, :invalid_response}
+    end
+  end
+
+  defp clean_json_response(response) do
+    # Clean the response - AI often wraps JSON in markdown code blocks
+    response
+    |> String.trim()
+    # Remove markdown code blocks
+    |> String.replace(~r/^```json\s*/m, "")
+    |> String.replace(~r/^```\s*/m, "")
+    |> String.replace(~r/```\s*$/m, "")
+    |> String.trim()
+  end
 
   defp truncate_content(content, max_length) do
     if String.length(content) > max_length do

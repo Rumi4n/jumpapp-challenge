@@ -7,7 +7,13 @@ defmodule JumpappEmailSorter.Workers.UnsubscribeWorker do
 
   require Logger
 
-  alias JumpappEmailSorter.{Emails, AIService}
+  alias JumpappEmailSorter.{Emails, AIService, FormAnalyzer}
+
+  alias JumpappEmailSorter.BrowserAutomation.{
+    SessionManager,
+    PageNavigator,
+    FormInteractor
+  }
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"email_id" => email_id}}) do
@@ -105,8 +111,15 @@ defmodule JumpappEmailSorter.Workers.UnsubscribeWorker do
     if one_click_unsubscribe?(body) do
       {:ok, "one_click"}
     else
-      # Try to analyze the page with AI
-      attempt_form_unsubscribe(url, body)
+      # Try browser automation with AI agent (NEW!)
+      case attempt_browser_automation(url, body) do
+        {:ok, method} ->
+          {:ok, method}
+
+        {:error, _reason} ->
+          # Fall back to simple form POST attempt
+          attempt_form_unsubscribe(url, body)
+      end
     end
   end
 
@@ -172,7 +185,7 @@ defmodule JumpappEmailSorter.Workers.UnsubscribeWorker do
   defp one_click_unsubscribe?(_), do: false
 
   defp attempt_form_unsubscribe(url, html_body) do
-    case AIService.analyze_unsubscribe_page(html_body) do
+    case AIService.analyze_unsubscribe_page(url, html_body) do
       {:ok, %{"method" => "form_submit", "form_data" => form_data}} when is_map(form_data) ->
         # Try to submit the form
         Logger.info("Attempting form submission with data: #{inspect(form_data)}")
@@ -213,6 +226,187 @@ defmodule JumpappEmailSorter.Workers.UnsubscribeWorker do
       {:error, reason} ->
         Logger.error("AI analysis failed: #{inspect(reason)}")
         {:error, :analysis_failed}
+    end
+  end
+
+  # NEW: Attempts to unsubscribe using browser automation and AI agent.
+  # This is the true AI agent implementation that can interact with forms.
+  defp attempt_browser_automation(url, html_body) do
+    Logger.info("Attempting browser automation for: #{url}")
+
+    # Parse the HTML to extract form structure
+    case FormAnalyzer.analyze_page(html_body) do
+      {:ok, analysis} ->
+        # Use AI to determine how to interact with the page
+        case AIService.analyze_form_structure(analysis) do
+          {:ok, instructions} ->
+            execute_browser_automation(url, instructions)
+
+          {:error, reason} ->
+            Logger.warning("AI form analysis failed: #{inspect(reason)}")
+            {:error, :ai_analysis_failed}
+        end
+
+      {:error, reason} ->
+        Logger.warning("Form parsing failed: #{inspect(reason)}")
+        {:error, :form_parse_failed}
+    end
+  end
+
+  defp execute_browser_automation(url, instructions) do
+    Logger.info(
+      "Executing browser automation with strategy: #{instructions["strategy"]}, confidence: #{instructions["confidence"]}"
+    )
+
+    # Use SessionManager to handle browser lifecycle
+    case SessionManager.with_session(fn session ->
+           perform_browser_actions(session, url, instructions)
+         end) do
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp perform_browser_actions(session, url, instructions) do
+    with {:ok, session} <- PageNavigator.navigate_to(session, url),
+         {:ok, session} <- execute_strategy(session, instructions),
+         {:ok, success?} <- PageNavigator.check_for_success_message(session) do
+      if success? do
+        Logger.info("Browser automation successful - success message detected")
+        {:ok, "browser_automation_confirmed"}
+      else
+        Logger.info("Browser automation completed - success uncertain")
+        {:ok, "browser_automation"}
+      end
+    else
+      {:error, reason} ->
+        Logger.error("Browser automation failed: #{inspect(reason)}")
+
+        # Try to take screenshot for debugging
+        SessionManager.take_screenshot(session, "unsubscribe_failed")
+
+        {:error, reason}
+    end
+  end
+
+  defp execute_strategy(session, %{"strategy" => "form_submit"} = instructions) do
+    Logger.info("Executing form_submit strategy")
+
+    with {:ok, session} <- fill_form_fields(session, instructions),
+         {:ok, session} <- submit_form(session, instructions) do
+      # Wait for page to process
+      Process.sleep(2000)
+      {:ok, session}
+    end
+  end
+
+  defp execute_strategy(session, %{"strategy" => "button_click"} = instructions) do
+    Logger.info("Executing button_click strategy")
+
+    selector = instructions["submit_selector"] || "button"
+
+    case FormInteractor.click_element(session, selector) do
+      {:ok, session} ->
+        Process.sleep(2000)
+        {:ok, session}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp execute_strategy(session, %{"strategy" => "link_click"} = instructions) do
+    Logger.info("Executing link_click strategy")
+
+    selector = instructions["link_selector"] || "a"
+
+    case FormInteractor.click_element(session, selector) do
+      {:ok, session} ->
+        Process.sleep(2000)
+        {:ok, session}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp execute_strategy(_session, %{"strategy" => "unknown"}) do
+    Logger.warning("Unknown strategy - cannot proceed")
+    {:error, :unknown_strategy}
+  end
+
+  defp execute_strategy(session, _instructions) do
+    Logger.warning("No valid strategy found in instructions")
+    {:ok, session}
+  end
+
+  defp fill_form_fields(session, instructions) do
+    fields = instructions["fields"] || []
+    selects = instructions["selects"] || []
+    checkboxes = instructions["checkboxes"] || []
+
+    with {:ok, session} <- fill_text_fields(session, fields),
+         {:ok, session} <- fill_select_fields(session, selects),
+         {:ok, session} <- fill_checkbox_fields(session, checkboxes) do
+      {:ok, session}
+    end
+  end
+
+  defp fill_text_fields(session, fields) when is_list(fields) do
+    Enum.reduce_while(fields, {:ok, session}, fn field, {:ok, sess} ->
+      selector = field["selector"]
+      value = field["value"]
+
+      Logger.debug("Filling field #{selector} with: #{value}")
+
+      case FormInteractor.fill_field(sess, selector, value) do
+        {:ok, new_session} -> {:cont, {:ok, new_session}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp fill_select_fields(session, selects) when is_list(selects) do
+    Enum.reduce_while(selects, {:ok, session}, fn select, {:ok, sess} ->
+      selector = select["selector"]
+      value = select["value"]
+
+      Logger.debug("Selecting option #{value} in #{selector}")
+
+      case FormInteractor.select_option(sess, selector, value) do
+        {:ok, new_session} -> {:cont, {:ok, new_session}}
+        {:error, _reason} -> {:cont, {:ok, sess}}
+      end
+    end)
+  end
+
+  defp fill_checkbox_fields(session, checkboxes) when is_list(checkboxes) do
+    Enum.reduce_while(checkboxes, {:ok, session}, fn checkbox, {:ok, sess} ->
+      selector = checkbox["selector"]
+      checked = checkbox["checked"]
+
+      Logger.debug("Setting checkbox #{selector} to #{checked}")
+
+      case FormInteractor.toggle_checkbox(sess, selector, checked) do
+        {:ok, new_session} -> {:cont, {:ok, new_session}}
+        {:error, _reason} -> {:cont, {:ok, sess}}
+      end
+    end)
+  end
+
+  defp submit_form(session, instructions) do
+    submit_selector = instructions["submit_selector"] || "button[type='submit']"
+
+    Logger.info("Submitting form using selector: #{submit_selector}")
+
+    case FormInteractor.click_element(session, submit_selector) do
+      {:ok, session} ->
+        {:ok, session}
+
+      {:error, _reason} ->
+        # Try alternative: submit the form directly
+        Logger.info("Click failed, trying form.submit()")
+        FormInteractor.submit_form(session)
     end
   end
 end

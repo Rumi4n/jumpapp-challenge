@@ -150,4 +150,22 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Req
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+
+  # Configure Wallaby for production (browser automation for unsubscribe)
+  config :wallaby,
+    driver: Wallaby.Chrome,
+    hackney_options: [timeout: 60_000, recv_timeout: 60_000],
+    screenshot_on_failure: false,
+    js_errors: false,
+    chrome: [
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--disable-features=VizDisplayCompositor",
+        "--window-size=1280,800",
+        "--disable-software-rasterizer"
+      ]
+    ]
 end

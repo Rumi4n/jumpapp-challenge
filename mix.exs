@@ -76,6 +76,8 @@ defmodule JumpappEmailSorter.MixProject do
       {:hackney, "~> 1.20"},
       # HTML Parsing for unsubscribe links
       {:floki, "~> 0.36"},
+      # Browser automation for AI agent unsubscribe
+      {:wallaby, "~> 0.30", runtime: false},
       # Mocking library for tests
       {:mox, "~> 1.0", only: :test}
     ]

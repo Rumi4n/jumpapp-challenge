@@ -86,7 +86,7 @@ config :jumpapp_email_sorter, Oban,
        {"*/3 * * * *", JumpappEmailSorter.Workers.GmailPollWorker}
      ]}
   ],
-  queues: [default: 10, email_import: 5, unsubscribe: 3]
+  queues: [default: 10, email_import: 5, unsubscribe: [limit: 1, paused: false]]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

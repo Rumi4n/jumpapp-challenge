@@ -33,3 +33,25 @@ config :jumpapp_email_sorter, Oban, testing: :manual
 config :jumpapp_email_sorter,
   gmail_client: JumpappEmailSorter.GmailClientMock,
   ai_service: JumpappEmailSorter.AIServiceMock
+
+# Configure Wallaby for browser automation
+# Note: Browser automation tests are excluded by default in test environment
+# Run with: mix test --include browser
+config :wallaby,
+  driver: Wallaby.Chrome,
+  hackney_options: [timeout: 30_000, recv_timeout: 30_000],
+  screenshot_on_failure: false,
+  js_errors: false,
+  chrome: [
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--disable-features=VizDisplayCompositor",
+      "--window-size=1280,800"
+    ]
+  ]
+
+# Exclude browser automation tests by default (ChromeDriver not always available)
+ExUnit.configure(exclude: [browser: true])
